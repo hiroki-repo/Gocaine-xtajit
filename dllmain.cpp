@@ -272,6 +272,7 @@ typedef void t_CPU_SET_MACTLFC(UINT32(*)(int, int, int));
 typedef void t_CPU_INIT();
 typedef void t_CPU_RESET();
 typedef void t_CPU_BUS_SIZE_CHANGE(int);
+typedef void t_CPU_SWITCH_PM(bool);
 
 HMODULE hmhm4dll;
 
@@ -560,6 +561,19 @@ public:
 			this->i386core->s.cpu_stat.sreg[CPU_DS_INDEX].u.seg.limit = 0xffffffff;
 			this->i386core->s.cpu_stat.sreg[CPU_FS_INDEX].u.seg.limit = 0xffffffff;
 			this->i386core->s.cpu_stat.sreg[CPU_GS_INDEX].u.seg.limit = 0xffffffff;
+
+			this->i386core->s.cpu_stat.protected_mode = 1;
+			this->i386core->s.cpu_stat.ss_32 = 1;
+			this->i386core->s.cpu_inst.op_32 = 1;
+			this->i386core->s.cpu_inst.as_32 = 1;
+			this->i386core->s.cpu_inst_default.op_32 = 1;
+			this->i386core->s.cpu_inst_default.as_32 = 1;
+
+			this->i386core->s.cpu_sysregs.gdtr_base = (UINT32)&gdt;
+			this->i386core->s.cpu_sysregs.gdtr_limit = 71;
+			this->i386core->s.cpu_sysregs.idtr_base = (UINT32)idt;
+			this->i386core->s.cpu_sysregs.idtr_limit = 255;
+			this->i386core->s.cpu_sysregs.ldtr = (UINT32)ldt;
 		}
 
 		this->i386core->s.fpu_regs.status = ctx->FloatSave.StatusWord;
@@ -676,6 +690,7 @@ extern "C" {
 		t_CPU_INIT* CPU_INIT = 0;
 		t_CPU_RESET* CPU_RESET = 0;
 		t_CPU_BUS_SIZE_CHANGE* CPU_BUS_SIZE_CHANGE = 0;
+		t_CPU_SWITCH_PM* CPU_SWITCH_PM = 0;
 
 		char retptx[] = {0xf4,0xeb,0xfd,0x00};
 		I386_CONTEXT* wow_context;
@@ -696,17 +711,19 @@ extern "C" {
 		CPU_INIT = (t_CPU_INIT*)ULGetProcAddress(HM, "CPU_INIT");
 		CPU_RESET = (t_CPU_RESET*)ULGetProcAddress(HM, "CPU_RESET");
 		CPU_BUS_SIZE_CHANGE = (t_CPU_BUS_SIZE_CHANGE*)ULGetProcAddress(HM, "CPU_BUS_SIZE_CHANGE");
+		CPU_SWITCH_PM = (t_CPU_SWITCH_PM*)ULGetProcAddress(HM, "CPU_SWITCH_PM");
 		CPU_INIT();
 		CPU_RESET();
 		CPU_BUS_SIZE_CHANGE(0x200);
 		memaccessandpt* memtmp = new memaccessandpt;
 		memtmp->i386core = (I386CORE*)CPU_GET_REGPTR(5);
 		memtmp->i386_context = wow_context;
+		CPU_SWITCH_PM(1);
 		memtmp->setctn(wow_context,1);
 		/*
-		mov x1,x0
-		mov x2,x1
 		mov x3,x2
+		mov x2,x1
+		mov x1,x0
 		ldr x4,testvalue+0
 		ldr x0,testvalue+8
 		br x4
@@ -714,7 +731,7 @@ extern "C" {
 		0x0000000000000000
 		0x0000000000000000
 		*/
-		char memaccess[] = {0xe1,0x03,0x00,0xaa,0xe2,0x03,0x01,0xaa,0xe2,0x03,0x02,0xaa,0x64,0x00,0x00,0x58,0x80,0x00,0x00,0x58,0x80,0x00,0x1f,0xd6,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
+		char memaccess[] = {0xe3,0x03,0x02,0xaa,0xe2,0x03,0x01,0xaa,0xe1,0x03,0x00,0xaa,0x64,0x00,0x00,0x58,0x80,0x00,0x00,0x58,0x80,0x00,0x1f,0xd6,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
 		(*(UINT64*)(&memaccess[24 + (8 * 0)])) = (UINT64)&memtmp->i386memaccess;
 		(*(UINT64*)(&memaccess[24 + (8 * 1)])) = (UINT64)memtmp;
 		DWORD tmp;
