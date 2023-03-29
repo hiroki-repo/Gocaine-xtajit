@@ -650,7 +650,6 @@ public:
 				}
 				UINT32* p = (UINT32*)ULongToPtr(_this->i386_context->Esp);
 				ret = p__wine_unix_call(*(&p[1]),(UINT32)p[3],ULongToPtr(p[4]));
-				ret = p[0];
 			}
 			_this->setctn(_this->i386_context,0);
 			return ret;
