@@ -340,7 +340,7 @@ struct I386_CONTEXT {
 };
 
 char bopcode[] = {0xe5,0x00,0xc3};
-char unixbopcode[] = { 0xe5,0x04,0xc3 };
+char unixbopcode[] = { 0xe5,0x04,0xc2,0x10,0x00 };
 #ifndef ThreadWow64Context
 #define ThreadWow64Context (THREADINFOCLASS)0x1d
 #endif
