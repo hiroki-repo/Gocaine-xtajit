@@ -649,7 +649,7 @@ public:
 					p__wine_unix_call = (t__wine_unix_call*)GetProcAddress(HM, "__wine_unix_call");
 				}
 				UINT32* p = (UINT32*)ULongToPtr(_this->i386_context->Esp);
-				ret = p__wine_unix_call(*(&p[1]),(UINT32)p[3],ULongToPtr(p[4]));
+				ret = p__wine_unix_call((*(UINT64*)((void*)&p[1])),(UINT32)p[3],ULongToPtr(p[4]));
 			}
 			_this->setctn(_this->i386_context,0);
 			return ret;
