@@ -663,7 +663,7 @@ public:
 extern "C" {
 #endif
 
-	__declspec(dllexport) void* WINAPI BTCpuGetBopCode(void) { return &bopcode; }
+	__declspec(dllexport) void* WINAPI BTCpuGetBopCode(void) { return (UINT32*)&bopcode; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuGetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtQueryInformationThread(thread,ThreadWow64Context,ctx,sizeof(*ctx),NULL); }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuProcessInit(void) { if ((ULONG_PTR)BTCpuProcessInit >> 32) { return STATUS_INVALID_ADDRESS; }
 	HMODULE HM = LoadLibraryA("ULDllLoader.dll");
