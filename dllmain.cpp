@@ -742,7 +742,7 @@ extern "C" {
 		VirtualProtect(funcofmemaccess,sizeof(memaccess),0x20,&tmp);
 		FlushInstructionCache(GetCurrentProcess(),funcofmemaccess,sizeof(memaccess));
 		CPU_SET_MACTLFC((UINT32(*)(int,int,int))funcofmemaccess);
-		while ((((UINT32)memtmp->i386core->s.cpu_regs.eip.d) < ((UINT32)& retptx)) || (((UINT32)memtmp->i386core->s.cpu_regs.eip.d) >= ((UINT32)& retptx + 4))) { CPU_EXECUTE_CC(0x7fffffff); memtmp->setntc(memtmp->i386_context); }
+		while (true) { CPU_EXECUTE_CC(0x7fffffff); memtmp->setntc(memtmp->i386_context); }
 		delete(memtmp);
 		free(HM);
 		free(funcofmemaccess);
