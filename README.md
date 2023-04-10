@@ -5,7 +5,7 @@ is a x86 code emulator for AArch64 Wine! But Sorry to say that we have to test i
 Wine 8.0 or more
 
 # How to use it
-1, Copy 3 dlls in this repository named xtajit.dll, np21w_emu.dll and ULDllLoader.dll to System32 on AArch64 wine.
+1, Copy 3 dlls in this repository named xtajit.dll, np21w_emu.dll and ULDllLoader.dll to System32 and SysWOW64 on AArch64 wine.
 
 2, Copy and/or implement the Wine i386 Wow64 modules for i386 apps compatibility to SysWOW64 folder in Windows folder if lacked SysWOW64 folder in Windows folder on the Wine for AArch64.
 
