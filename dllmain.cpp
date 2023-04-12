@@ -252,7 +252,7 @@ MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 typedef NTSYSAPI PVOID t_RtlAllocateHeap(PVOID,ULONG,SIZE_T);
 t_RtlAllocateHeap* RtlAllocateHeap = 0;
 typedef NTSYSCALLAPI NTSTATUS t_NtSetInformationThread(HANDLE,THREADINFOCLASS,PVOID,ULONG);
-t_NtSetInformationThread* NtSetInformationThread = 0;
+//t_NtSetInformationThread* NtSetInformationThread = 0;
 typedef NTSTATUS WINAPI t_RtlWow64GetCurrentCpuArea(USHORT, void**, void**);
 t_RtlWow64GetCurrentCpuArea* RtlWow64GetCurrentCpuArea = 0;
 
@@ -675,7 +675,7 @@ extern "C" {
 	Wow64SystemServiceEx = (t_Wow64SystemServiceEx*)GetProcAddress(HM2,"Wow64SystemServiceEx");
 	HMODULE HM3 = LoadLibraryA("ntdll.dll");
 	RtlAllocateHeap = (t_RtlAllocateHeap*)GetProcAddress(HM3, "RtlAllocateHeap");
-	NtSetInformationThread = (t_NtSetInformationThread*)GetProcAddress(HM3, "NtSetInformationThread");
+	//NtSetInformationThread = (t_NtSetInformationThread*)GetProcAddress(HM3, "NtSetInformationThread");
 	RtlWow64GetCurrentCpuArea = (t_RtlWow64GetCurrentCpuArea*)GetProcAddress(HM3, "RtlWow64GetCurrentCpuArea");
 
 	return STATUS_SUCCESS; }
@@ -703,7 +703,7 @@ extern "C" {
 			* P = 0;
 		sprintf_s(Buff_a, "%s\\%s", Buff_nf, "np21w_emu.dll");
 		void* HM = ULLoadLibraryA(Buff_a);
-		ULExecDllMain(HM, 1);
+		//ULExecDllMain(HM, 1);
 		CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
 		CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(HM, "CPU_EXECUTE_CC");
 		CPU_SET_MACTLFC = (t_CPU_SET_MACTLFC*)ULGetProcAddress(HM, "CPU_SET_MACTLFC");
