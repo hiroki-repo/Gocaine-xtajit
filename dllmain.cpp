@@ -252,9 +252,11 @@ MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 typedef NTSYSAPI PVOID t_RtlAllocateHeap(PVOID,ULONG,SIZE_T);
 t_RtlAllocateHeap* RtlAllocateHeap = 0;
 typedef NTSYSCALLAPI NTSTATUS t_NtSetInformationThread(HANDLE,THREADINFOCLASS,PVOID,ULONG);
-//t_NtSetInformationThread* NtSetInformationThread = 0;
+t_NtSetInformationThread* NtSetInformationThread_alternative = 0;
 typedef NTSTATUS WINAPI t_RtlWow64GetCurrentCpuArea(USHORT, void**, void**);
 t_RtlWow64GetCurrentCpuArea* RtlWow64GetCurrentCpuArea = 0;
+typedef __kernel_entry NTSTATUS t_NtQueryInformationThread(HANDLE,THREADINFOCLASS,PVOID,ULONG,PULONG);
+t_NtQueryInformationThread* NtQueryInformationThread_alternative = 0;
 
 typedef NTSTATUS WINAPI t_Wow64SystemServiceEx(UINT, UINT*);
 t_Wow64SystemServiceEx* Wow64SystemServiceEx = 0;
@@ -664,7 +666,7 @@ extern "C" {
 #endif
 
 	__declspec(dllexport) void* WINAPI BTCpuGetBopCode(void) { return (UINT32*)&bopcode; }
-	__declspec(dllexport) NTSTATUS WINAPI BTCpuGetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtQueryInformationThread(thread,ThreadWow64Context,ctx,sizeof(*ctx),NULL); }
+	__declspec(dllexport) NTSTATUS WINAPI BTCpuGetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtQueryInformationThread_alternative(thread,ThreadWow64Context,ctx,sizeof(*ctx),NULL); }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuProcessInit(void) { if ((ULONG_PTR)BTCpuProcessInit >> 32) { return STATUS_INVALID_ADDRESS; }
 	HMODULE HM = LoadLibraryA("ULDllLoader.dll");
 	if (HM == 0) { return STATUS_INVALID_ADDRESS; }
@@ -675,13 +677,14 @@ extern "C" {
 	Wow64SystemServiceEx = (t_Wow64SystemServiceEx*)GetProcAddress(HM2,"Wow64SystemServiceEx");
 	HMODULE HM3 = LoadLibraryA("ntdll.dll");
 	RtlAllocateHeap = (t_RtlAllocateHeap*)GetProcAddress(HM3, "RtlAllocateHeap");
-	//NtSetInformationThread = (t_NtSetInformationThread*)GetProcAddress(HM3, "NtSetInformationThread");
+	NtSetInformationThread_alternative = (t_NtSetInformationThread*)GetProcAddress(HM3, "NtSetInformationThread");
+	NtQueryInformationThread_alternative = (t_NtQueryInformationThread*)GetProcAddress(HM3, "NtQueryInformationThread");
 	RtlWow64GetCurrentCpuArea = (t_RtlWow64GetCurrentCpuArea*)GetProcAddress(HM3, "RtlWow64GetCurrentCpuArea");
 
 	return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuThreadInit(void) { idt = (char*)RtlAllocateHeap(GetProcessHeap(),HEAP_ZERO_MEMORY,256*8); ldt = (char*)RtlAllocateHeap(GetProcessHeap(), HEAP_ZERO_MEMORY, 256 * 8); return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuResetToConsistentState(EXCEPTION_POINTERS* ptrs) { return STATUS_SUCCESS; }
-	__declspec(dllexport) NTSTATUS WINAPI BTCpuSetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtSetInformationThread(thread, ThreadWow64Context, ctx, sizeof(*ctx)); }
+	__declspec(dllexport) NTSTATUS WINAPI BTCpuSetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtSetInformationThread_alternative(thread, ThreadWow64Context, ctx, sizeof(*ctx)); }
 	__declspec(dllexport) void WINAPI BTCpuSimulate(void) {
 		t_CPU_GET_REGPTR* CPU_GET_REGPTR = 0;
 		t_CPU_EXECUTE_CC* CPU_EXECUTE_CC = 0;
@@ -719,6 +722,7 @@ extern "C" {
 		memtmp->i386_context = wow_context;
 		CPU_SWITCH_PM(1);
 		memtmp->setctn(wow_context,1);
+#ifdef _ARM64_
 		/*
 		mov x3,x2
 		mov x2,x1
@@ -733,6 +737,19 @@ extern "C" {
 		char memaccess[] = {0xe3,0x03,0x02,0xaa,0xe2,0x03,0x01,0xaa,0xe1,0x03,0x00,0xaa,0x64,0x00,0x00,0x58,0x80,0x00,0x00,0x58,0x80,0x00,0x1f,0xd6,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
 		(*(UINT64*)(&memaccess[24 + (8 * 0)])) = (UINT64)memtmp->i386memaccess;
 		(*(UINT64*)(&memaccess[24 + (8 * 1)])) = (UINT64)memtmp;
+#else
+		/*
+		mov r9,r8
+		mov r8,rdx
+		mov rdx,rcx
+		mov rcx,0x123456789abcdef
+		mov rax,0x123456789abcdef
+		jmp [rax]
+		*/
+		char memaccess[] = { 0x4D ,0x89 ,0xC1 ,0x49 ,0x89 ,0xD0 ,0x48 ,0x89 ,0xCA ,0x48 ,0xB9 ,0xEF ,0xCD ,0xAB ,0x89 ,0x67 ,0x45 ,0x23 ,0x01 ,0x48 ,0xB8 ,0xEF ,0xCD ,0xAB ,0x89 ,0x67 ,0x45 ,0x23 ,0x01 ,0xFF ,0x20 };
+		(*(UINT64*)(&memaccess[0x15])) = (UINT64)memtmp->i386memaccess;
+		(*(UINT64*)(&memaccess[0x0b])) = (UINT64)memtmp;
+#endif
 		DWORD tmp;
 		char* funcofmemaccess = (char*)malloc(sizeof(memaccess));
 		if (funcofmemaccess != 0) {
