@@ -771,6 +771,7 @@ extern "C" {
 		free(funcofmemaccess);
 	}
 	__declspec(dllexport) void* WINAPI __wine_get_unix_opcode(void) { return (UINT32*)&unixbopcode; }
+	__declspec(dllexport) BOOLEAN WINAPI BTCpuIsProcessorFeaturePresent(UINT feature) { if (feature == 3 || feature == 6 || feature == 7 || feature == 8 || feature == 10 || feature == 13) { return true; }return false; }
 
 #ifdef __cplusplus
 }
