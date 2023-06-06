@@ -669,13 +669,18 @@ extern "C" {
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuGetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtQueryInformationThread_alternative(thread,ThreadWow64Context,ctx,sizeof(*ctx),NULL); }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuProcessInit(void) { if ((ULONG_PTR)BTCpuProcessInit >> 32) { return STATUS_INVALID_ADDRESS; }
 	HMODULE HM = LoadLibraryA("ULDllLoader.dll");
+	if (HM == 0) { HM = LoadLibraryA("C:\\Windows\\Sysnative\\ULDllLoader.dll"); }
 	if (HM == 0) { return STATUS_INVALID_ADDRESS; }
 	ULLoadLibraryA = (t_ULLoadLibraryA*)GetProcAddress(HM, "ULLoadLibraryA");
 	ULGetProcAddress = (t_ULGetProcAddress*)GetProcAddress(HM, "ULGetProcAddress");
 	ULExecDllMain = (t_ULExecDllMain*)GetProcAddress(HM, "ULExecDllMain");
 	HMODULE HM2 = LoadLibraryA("Wow64.dll");
+	if (HM2 == 0) { HM2 = LoadLibraryA("C:\\Windows\\Sysnative\\Wow64.dll"); }
+	if (HM2 == 0) { return STATUS_INVALID_ADDRESS; }
 	Wow64SystemServiceEx = (t_Wow64SystemServiceEx*)GetProcAddress(HM2,"Wow64SystemServiceEx");
 	HMODULE HM3 = LoadLibraryA("ntdll.dll");
+	if (HM3 == 0) { HM3 = LoadLibraryA("C:\\Windows\\Sysnative\\ntdll.dll"); }
+	if (HM3 == 0) { return STATUS_INVALID_ADDRESS; }
 	RtlAllocateHeap = (t_RtlAllocateHeap*)GetProcAddress(HM3, "RtlAllocateHeap");
 	NtSetInformationThread_alternative = (t_NtSetInformationThread*)GetProcAddress(HM3, "NtSetInformationThread");
 	NtQueryInformationThread_alternative = (t_NtQueryInformationThread*)GetProcAddress(HM3, "NtQueryInformationThread");
@@ -706,6 +711,7 @@ extern "C" {
 			* P = 0;
 		sprintf_s(Buff_a, "%s\\%s", Buff_nf, "np21w_emu.dll");
 		void* HM = ULLoadLibraryA(Buff_a);
+		if (HM == 0) { HM = ULLoadLibraryA((char *)"C:\\Windows\\Sysnative\\np21w_emu.dll"); }
 		//ULExecDllMain(HM, 1);
 		CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
 		CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(HM, "CPU_EXECUTE_CC");
