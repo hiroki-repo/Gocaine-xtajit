@@ -514,6 +514,16 @@ typedef struct ___TEB
 	GUID                         EffectiveContainerId;              /* ff0/1828 */
 } __TEB, * __PTEB;
 
+typedef struct _WOW64INFO
+{
+	ULONG   NativeSystemPageSize;
+	ULONG   CpuFlags;
+	ULONG   Wow64ExecuteFlags;
+	ULONG   unknown[5];
+	USHORT  NativeMachineType;
+	USHORT  EmulatedMachineType;
+} WOW64INFO;
+
 char gdt[1024*9],* idt, * ldt;
 
 static inline void* get_wow_teb(__TEB* teb) { return teb->WowTebOffset ? (void*)((char*)teb + teb->WowTebOffset) : NULL; }
@@ -685,6 +695,13 @@ extern "C" {
 	NtSetInformationThread_alternative = (t_NtSetInformationThread*)GetProcAddress(HM3, "NtSetInformationThread");
 	NtQueryInformationThread_alternative = (t_NtQueryInformationThread*)GetProcAddress(HM3, "NtQueryInformationThread");
 	RtlWow64GetCurrentCpuArea = (t_RtlWow64GetCurrentCpuArea*)GetProcAddress(HM3, "RtlWow64GetCurrentCpuArea");
+
+	WOW64INFO* wow64info = (WOW64INFO*)NtCurrentTeb()->TlsSlots[10];
+#ifdef _ARM64_
+	wow64info->CpuFlags |= 2;
+#else
+	wow64info->CpuFlags |= 1;
+#endif
 
 	return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuThreadInit(void) { idt = (char*)RtlAllocateHeap(GetProcessHeap(),HEAP_ZERO_MEMORY,256*8); ldt = (char*)RtlAllocateHeap(GetProcessHeap(), HEAP_ZERO_MEMORY, 256 * 8); return STATUS_SUCCESS; }
