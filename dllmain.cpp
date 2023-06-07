@@ -697,11 +697,7 @@ extern "C" {
 	RtlWow64GetCurrentCpuArea = (t_RtlWow64GetCurrentCpuArea*)GetProcAddress(HM3, "RtlWow64GetCurrentCpuArea");
 
 	WOW64INFO* wow64info = (WOW64INFO*)NtCurrentTeb()->TlsSlots[10];
-#ifdef _ARM64_
-	wow64info->CpuFlags |= 2;
-#else
 	wow64info->CpuFlags |= 1;
-#endif
 
 	return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuThreadInit(void) { idt = (char*)RtlAllocateHeap(GetProcessHeap(),HEAP_ZERO_MEMORY,256*8); ldt = (char*)RtlAllocateHeap(GetProcessHeap(), HEAP_ZERO_MEMORY, 256 * 8); return STATUS_SUCCESS; }
@@ -761,6 +757,18 @@ extern "C" {
 		(*(UINT64*)(&memaccess[24 + (8 * 0)])) = (UINT64)memtmp->i386memaccess;
 		(*(UINT64*)(&memaccess[24 + (8 * 1)])) = (UINT64)memtmp;
 #else
+#ifdef _X86_
+/*
+pop eax
+push 0x12345678
+push eax
+mov eax,0
+jmp eax
+*/
+		char memaccess[] = { 0x58 ,0x68 ,0x78 ,0x56 ,0x34 ,0x12 ,0x50 ,0xB8 ,0x00 ,0x00 ,0x00 ,0x00 ,0xFF ,0xE0 };
+		(*(UINT64*)(&memaccess[0x08])) = (UINT64)memtmp->i386memaccess;
+		(*(UINT64*)(&memaccess[0x02])) = (UINT64)memtmp;
+#else
 		/*
 		mov r9,r8
 		mov r8,rdx
@@ -772,6 +780,7 @@ extern "C" {
 		char memaccess[] = { 0x4D ,0x89 ,0xC1 ,0x49 ,0x89 ,0xD0 ,0x48 ,0x89 ,0xCA ,0x48 ,0xB9 ,0xEF ,0xCD ,0xAB ,0x89 ,0x67 ,0x45 ,0x23 ,0x01 ,0x48 ,0xB8 ,0xEF ,0xCD ,0xAB ,0x89 ,0x67 ,0x45 ,0x23 ,0x01 ,0xFF ,0xE0 };
 		(*(UINT64*)(&memaccess[0x15])) = (UINT64)memtmp->i386memaccess;
 		(*(UINT64*)(&memaccess[0x0b])) = (UINT64)memtmp;
+#endif
 #endif
 		DWORD tmp;
 		char* funcofmemaccess = (char*)malloc(sizeof(memaccess));
@@ -788,7 +797,7 @@ extern "C" {
 		free(funcofmemaccess);
 	}
 	__declspec(dllexport) void* WINAPI __wine_get_unix_opcode(void) { return (UINT32*)&unixbopcode; }
-	__declspec(dllexport) BOOLEAN WINAPI BTCpuIsProcessorFeaturePresent(UINT feature) { if (feature == 3 || feature == 6 || feature == 7 || feature == 8 || feature == 10 || feature == 13) { return true; }return false; }
+	__declspec(dllexport) BOOLEAN WINAPI BTCpuIsProcessorFeaturePresent(UINT feature) { if (feature == 1 || feature == 3 || feature == 6 || feature == 7 || feature == 8 || feature == 10 || feature == 13) { return true; }return false; }
 
 #ifdef __cplusplus
 }
