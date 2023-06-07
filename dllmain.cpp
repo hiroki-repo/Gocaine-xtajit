@@ -758,16 +758,16 @@ extern "C" {
 		(*(UINT64*)(&memaccess[24 + (8 * 1)])) = (UINT64)memtmp;
 #else
 #ifdef _X86_
-/*
-pop eax
-push 0x12345678
-push eax
-mov eax,0
-jmp eax
-*/
+		/*
+		pop eax
+		push 0x12345678
+		push eax
+		mov eax,0
+		jmp eax
+		*/
 		char memaccess[] = { 0x58 ,0x68 ,0x78 ,0x56 ,0x34 ,0x12 ,0x50 ,0xB8 ,0x00 ,0x00 ,0x00 ,0x00 ,0xFF ,0xE0 };
-		(*(UINT64*)(&memaccess[0x08])) = (UINT64)memtmp->i386memaccess;
-		(*(UINT64*)(&memaccess[0x02])) = (UINT64)memtmp;
+		(*(UINT32*)(&memaccess[0x08])) = (UINT32)memtmp->i386memaccess;
+		(*(UINT32*)(&memaccess[0x02])) = (UINT32)memtmp;
 #else
 		/*
 		mov r9,r8
