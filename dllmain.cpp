@@ -723,11 +723,11 @@ extern "C" {
 		if (P)
 			* P = 0;
 		sprintf_s(Buff_a, "%s\\%s", Buff_nf, "np21w_emu.dll");
-		UINT64 oldvalue4wd;
-		Wow64DisableWow64FsRedirection((PVOID*)&oldvalue4wd);
+		PVOID oldvalue4wd;
+		Wow64DisableWow64FsRedirection(&oldvalue4wd);
 		void* HM = ULLoadLibraryA(Buff_a);
 		if (HM == 0) { HM = ULLoadLibraryA((char *)"C:\\Windows\\Sysnative\\np21w_emu.dll"); }
-		Wow64RevertWow64FsRedirection((PVOID)&oldvalue4wd);
+		Wow64RevertWow64FsRedirection(oldvalue4wd);
 		//ULExecDllMain(HM, 1);
 		CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
 		CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(HM, "CPU_EXECUTE_CC");
