@@ -248,6 +248,7 @@ MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 #include <stdio.h>
 #include "stdlib.h"
 #include "cpu.h"
+#include "ntstatus.h"
 
 typedef NTSYSAPI PVOID t_RtlAllocateHeap(PVOID,ULONG,SIZE_T);
 t_RtlAllocateHeap* RtlAllocateHeap = 0;
@@ -278,15 +279,24 @@ typedef void t_CPU_SWITCH_PM(bool);
 
 HMODULE hmhm4dll;
 
+typedef NTSYSAPI NTSTATUS  WINAPI t_LdrDisableThreadCalloutsForDll(HMODULE);
+t_LdrDisableThreadCalloutsForDll* LdrDisableThreadCalloutsForDll;
+
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
                      )
 {
+	HMODULE hofntdll = 0;
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
 		hmhm4dll = hModule;
+		hofntdll = LoadLibraryA("ntdll.dll");
+		if (hofntdll == 0) { return false; }
+		LdrDisableThreadCalloutsForDll = (t_LdrDisableThreadCalloutsForDll*)GetProcAddress(hofntdll,"LdrDisableThreadCalloutsForDll");
+		if (LdrDisableThreadCalloutsForDll == 0) { return false; }
+		LdrDisableThreadCalloutsForDll(hModule);
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:
@@ -801,6 +811,7 @@ extern "C" {
 	}
 	__declspec(dllexport) void* WINAPI __wine_get_unix_opcode(void) { return (UINT32*)&unixbopcode; }
 	__declspec(dllexport) BOOLEAN WINAPI BTCpuIsProcessorFeaturePresent(UINT feature) { if (feature == 1 || feature == 2 || feature == 3 || feature == 6 || feature == 7 || feature == 8 || feature == 10 || feature == 13) { return true; }return false; }
+	__declspec(dllexport) NTSTATUS WINAPI BTCpuTurboThunkControl(ULONG enable) { if (enable) { return STATUS_NOT_SUPPORTED; } return STATUS_SUCCESS; }
 
 #ifdef __cplusplus
 }
