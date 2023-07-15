@@ -544,6 +544,7 @@ class memaccessandpt{
 public:
 	I386CORE* i386core;
 	I386_CONTEXT* i386_context;
+	bool i386finish = false;
 	void setctn(I386_CONTEXT* ctx, int firsttime) {
 		__TEB* teb = (__TEB*)NtCurrentTeb();
 		void* wowteb = get_wow_teb(teb);
@@ -664,6 +665,8 @@ public:
 			_this->setntc(_this->i386_context);
 			if (prm_0 == 0) {
 				ret = Wow64SystemServiceEx(_this->i386_context->Eax,(UINT*)ULongToPtr(_this->i386_context->Esp+8));
+				_this->i386finish = true;
+				_this->i386core->s.remainclock = 0;
 			}
 			else if (prm_0 == 4) {
 				if (!p__wine_unix_call) {
@@ -672,6 +675,8 @@ public:
 				}
 				UINT32* p = (UINT32*)ULongToPtr(_this->i386_context->Esp);
 				ret = p__wine_unix_call((*(UINT64*)((void*)&p[1])),(UINT32)p[3],ULongToPtr(p[4]));
+				_this->i386finish = true;
+				_this->i386core->s.remainclock = 0;
 			}
 			_this->setctn(_this->i386_context,0);
 			return ret;
@@ -801,7 +806,9 @@ extern "C" {
 		VirtualProtect(funcofmemaccess,sizeof(memaccess),0x20,&tmp);
 		FlushInstructionCache(GetCurrentProcess(),funcofmemaccess,sizeof(memaccess));
 		CPU_SET_MACTLFC((UINT32(*)(int,int,int))funcofmemaccess);
-		while (true) { CPU_EXECUTE_CC(0x7fffffff); }
+		memtmp->i386finish = false;
+		while (memtmp->i386finish == false) { CPU_EXECUTE_CC(0x7fffffff); }
+		memtmp->setntc(wow_context);
 		delete(memtmp);
 		free(HM);
 		free(funcofmemaccess);
