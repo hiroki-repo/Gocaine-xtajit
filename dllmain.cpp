@@ -667,7 +667,7 @@ public:
 			}
 			else if (prm_0 == 4) {
 				if (!p__wine_unix_call) {
-					HMODULE HM = LoadLibraryA("ntdll.dll");
+					HMODULE HM = LoadLibraryA("C:\\Windows\\Sysnative\\ntdll.dll");
 					p__wine_unix_call = (t__wine_unix_call*)GetProcAddress(HM, "__wine_unix_call");
 				}
 				UINT32* p = (UINT32*)ULongToPtr(_this->i386_context->Esp);
@@ -804,7 +804,7 @@ extern "C" {
 		VirtualProtect(funcofmemaccess,sizeof(memaccess),0x20,&tmp);
 		FlushInstructionCache(GetCurrentProcess(),funcofmemaccess,sizeof(memaccess));
 		CPU_SET_MACTLFC((UINT32(*)(int,int,int))funcofmemaccess);
-		while (true) { CPU_EXECUTE_CC(0x7fffffff); memtmp->setntc(memtmp->i386_context); }
+		while (true) { CPU_EXECUTE_CC(0x7fffffff); }
 		delete(memtmp);
 		free(HM);
 		free(funcofmemaccess);
