@@ -292,7 +292,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     {
     case DLL_PROCESS_ATTACH:
 		hmhm4dll = hModule;
-		hofntdll = LoadLibraryA("ntdll.dll");
+		hofntdll = LoadLibraryA("C:\\Windows\\Sysnative\\ntdll.dll");
 		if (hofntdll == 0) { return false; }
 		LdrDisableThreadCalloutsForDll = (t_LdrDisableThreadCalloutsForDll*)GetProcAddress(hofntdll,"LdrDisableThreadCalloutsForDll");
 		if (LdrDisableThreadCalloutsForDll == 0) { return false; }
@@ -688,18 +688,15 @@ extern "C" {
 	__declspec(dllexport) void* WINAPI BTCpuGetBopCode(void) { return (UINT32*)&bopcode; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuGetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtQueryInformationThread_alternative(thread,ThreadWow64Context,ctx,sizeof(*ctx),NULL); }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuProcessInit(void) { if ((ULONG_PTR)BTCpuProcessInit >> 32) { return STATUS_INVALID_ADDRESS; }
-	HMODULE HM = LoadLibraryA("ULDllLoader.dll");
-	if (HM == 0) { HM = LoadLibraryA("C:\\Windows\\Sysnative\\ULDllLoader.dll"); }
+	HMODULE HM = LoadLibraryA("C:\\Windows\\Sysnative\\ULDllLoader.dll");
 	if (HM == 0) { return STATUS_INVALID_ADDRESS; }
 	ULLoadLibraryA = (t_ULLoadLibraryA*)GetProcAddress(HM, "ULLoadLibraryA");
 	ULGetProcAddress = (t_ULGetProcAddress*)GetProcAddress(HM, "ULGetProcAddress");
 	ULExecDllMain = (t_ULExecDllMain*)GetProcAddress(HM, "ULExecDllMain");
-	HMODULE HM2 = LoadLibraryA("Wow64.dll");
-	if (HM2 == 0) { HM2 = LoadLibraryA("C:\\Windows\\Sysnative\\Wow64.dll"); }
+	HMODULE HM2 = LoadLibraryA("C:\\Windows\\Sysnative\\Wow64.dll");
 	if (HM2 == 0) { return STATUS_INVALID_ADDRESS; }
 	Wow64SystemServiceEx = (t_Wow64SystemServiceEx*)GetProcAddress(HM2,"Wow64SystemServiceEx");
-	HMODULE HM3 = LoadLibraryA("ntdll.dll");
-	if (HM3 == 0) { HM3 = LoadLibraryA("C:\\Windows\\Sysnative\\ntdll.dll"); }
+	HMODULE HM3 = LoadLibraryA("C:\\Windows\\Sysnative\\ntdll.dll");
 	if (HM3 == 0) { return STATUS_INVALID_ADDRESS; }
 	RtlAllocateHeap = (t_RtlAllocateHeap*)GetProcAddress(HM3, "RtlAllocateHeap");
 	NtSetInformationThread_alternative = (t_NtSetInformationThread*)GetProcAddress(HM3, "NtSetInformationThread");
