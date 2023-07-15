@@ -268,6 +268,8 @@ typedef void* t_ULGetProcAddress(void*, const char*);
 t_ULGetProcAddress* ULGetProcAddress = 0;
 typedef BOOL t_ULExecDllMain(void*, UINT32);
 t_ULExecDllMain* ULExecDllMain = 0;
+typedef BOOL t_ULFreeLibrary(void*);
+t_ULFreeLibrary* ULFreeLibrary = 0;
 
 typedef void* t_CPU_GET_REGPTR(int);
 typedef int t_CPU_EXECUTE_CC(int);
@@ -698,6 +700,7 @@ extern "C" {
 	ULLoadLibraryA = (t_ULLoadLibraryA*)GetProcAddress(HM, "ULLoadLibraryA");
 	ULGetProcAddress = (t_ULGetProcAddress*)GetProcAddress(HM, "ULGetProcAddress");
 	ULExecDllMain = (t_ULExecDllMain*)GetProcAddress(HM, "ULExecDllMain");
+	ULFreeLibrary= (t_ULFreeLibrary*)GetProcAddress(HM, "ULFreeLibrary");
 	HMODULE HM2 = LoadLibraryA("C:\\Windows\\Sysnative\\Wow64.dll");
 	if (HM2 == 0) { return STATUS_INVALID_ADDRESS; }
 	Wow64SystemServiceEx = (t_Wow64SystemServiceEx*)GetProcAddress(HM2,"Wow64SystemServiceEx");
@@ -798,7 +801,7 @@ extern "C" {
 #endif
 #endif
 		DWORD tmp;
-		char* funcofmemaccess = (char*)malloc(sizeof(memaccess));
+		char* funcofmemaccess = (char*)VirtualAlloc(0, sizeof(memaccess), 0x3000, 0x40);
 		if (funcofmemaccess != 0) {
 			memcpy(funcofmemaccess, memaccess, sizeof(memaccess));
 		}
@@ -810,8 +813,8 @@ extern "C" {
 		while (memtmp->i386finish == false) { CPU_EXECUTE_CC(0x7fffffff); }
 		memtmp->setntc(wow_context);
 		delete(memtmp);
-		free(HM);
-		free(funcofmemaccess);
+		ULFreeLibrary(HM);
+		VirtualFree(funcofmemaccess,0,0x8000);
 	}
 	__declspec(dllexport) void* WINAPI __wine_get_unix_opcode(void) { return (UINT32*)&unixbopcode; }
 	__declspec(dllexport) BOOLEAN WINAPI BTCpuIsProcessorFeaturePresent(UINT feature) { if (feature == 1 || feature == 2 || feature == 3 || feature == 6 || feature == 7 || feature == 8 || feature == 10 || feature == 13) { return true; }return false; }
