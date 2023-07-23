@@ -675,7 +675,7 @@ public:
 		ctx->FloatSave.TagWord = 0;
 		for (int i = 0; i < 8; i++) {
 			//ctx->FloatSave.TagWord |= (((this->i386core->s.fpu_stat.tag[i] == 0) ? TAG_Empty : TAG_Valid) << (2 * i));
-			ctx->FloatSave.TagWord |= (((this->i386core->s.fpu_stat.tag[i] == 0) & 3) << (2 * i));
+			ctx->FloatSave.TagWord |= ((this->i386core->s.fpu_stat.tag[i] & 3) << (2 * i));
 		}
 		memcpy(ctx->FloatSave.RegisterArea, this->i386core->s.fpu_stat.reg, sizeof(ctx->FloatSave.RegisterArea));
 
