@@ -636,7 +636,9 @@ public:
 			else this->i386core->s.fpu_stat.tag[i] = TAG_Valid;*/
 		}
 		this->i386core->s.fpu_regs.tag = ctx->FloatSave.TagWord;
-		memcpy(this->i386core->s.fpu_stat.reg,ctx->FloatSave.RegisterArea,sizeof(ctx->FloatSave.RegisterArea));
+		for (int i = 0; i < 8; i++) {
+			memcpy((void*)(((char*)(this->i386core->s.fpu_stat.reg))[10 * i]), (char *)ctx->FloatSave.RegisterArea[10 * i], 10);
+		}
 
 		this->i386core->s.cpu_regs.dr[0] = ctx->Dr0;
 		this->i386core->s.cpu_regs.dr[1] = ctx->Dr1;
@@ -677,7 +679,9 @@ public:
 			//ctx->FloatSave.TagWord |= (((this->i386core->s.fpu_stat.tag[i] == 0) ? TAG_Empty : TAG_Valid) << (2 * i));
 			ctx->FloatSave.TagWord |= ((this->i386core->s.fpu_stat.tag[i] & 3) << (2 * i));
 		}
-		memcpy(ctx->FloatSave.RegisterArea, this->i386core->s.fpu_stat.reg, sizeof(ctx->FloatSave.RegisterArea));
+		for (int i = 0; i < 8; i++) {
+			memcpy((char *)ctx->FloatSave.RegisterArea[10 * i], (void *)(((char *)(this->i386core->s.fpu_stat.reg))[10 * i]), 10);
+		}
 
 		ctx->Dr0 = this->i386core->s.cpu_regs.dr[0];
 		ctx->Dr1 = this->i386core->s.cpu_regs.dr[1];
