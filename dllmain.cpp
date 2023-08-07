@@ -294,7 +294,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     {
     case DLL_PROCESS_ATTACH:
 		hmhm4dll = hModule;
-		hofntdll = LoadLibraryA("C:\\Windows\\Sysnative\\ntdll.dll");
+		hofntdll = LoadLibraryA("C:\\Windows\\System32\\ntdll.dll");
 		if (hofntdll == 0) { return false; }
 		LdrDisableThreadCalloutsForDll = (t_LdrDisableThreadCalloutsForDll*)GetProcAddress(hofntdll,"LdrDisableThreadCalloutsForDll");
 		if (LdrDisableThreadCalloutsForDll == 0) { return false; }
