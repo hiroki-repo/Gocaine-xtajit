@@ -703,7 +703,7 @@ public:
 		case 1:
 			return (*(UINT8*)(prm_0));
 			break;
-		case 3:
+		case 0x23:
 			UINT32 ret = 0;
 			_this->setntc(_this->i386_context);
 			if (prm_0 == 0) {
