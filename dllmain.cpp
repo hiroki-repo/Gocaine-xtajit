@@ -298,6 +298,10 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		if (hofntdll == 0) { return false; }
 		LdrDisableThreadCalloutsForDll = (t_LdrDisableThreadCalloutsForDll*)GetProcAddress(hofntdll,"LdrDisableThreadCalloutsForDll");
 		if (LdrDisableThreadCalloutsForDll == 0) { return false; }
+		RtlAllocateHeap = (t_RtlAllocateHeap*)GetProcAddress(hofntdll, "RtlAllocateHeap");
+		NtSetInformationThread_alternative = (t_NtSetInformationThread*)GetProcAddress(hofntdll, "NtSetInformationThread");
+		NtQueryInformationThread_alternative = (t_NtQueryInformationThread*)GetProcAddress(hofntdll, "NtQueryInformationThread");
+		RtlWow64GetCurrentCpuArea = (t_RtlWow64GetCurrentCpuArea*)GetProcAddress(hofntdll, "RtlWow64GetCurrentCpuArea");
 		LdrDisableThreadCalloutsForDll(hModule);
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
@@ -737,20 +741,23 @@ extern "C" {
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuGetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtQueryInformationThread_alternative(thread,ThreadWow64Context,ctx,sizeof(*ctx),NULL); }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuProcessInit(void) { if ((ULONG_PTR)BTCpuProcessInit >> 32) { return STATUS_INVALID_ADDRESS; }
 	HMODULE HM = LoadLibraryA("C:\\Windows\\Sysnative\\ULDllLoader.dll");
+	if (HM == 0) { HM = LoadLibraryA("C:\\Windows\\System32\\ULDllLoader.dll"); }
 	if (HM == 0) { return STATUS_INVALID_ADDRESS; }
 	ULLoadLibraryA = (t_ULLoadLibraryA*)GetProcAddress(HM, "ULLoadLibraryA");
 	ULGetProcAddress = (t_ULGetProcAddress*)GetProcAddress(HM, "ULGetProcAddress");
 	ULExecDllMain = (t_ULExecDllMain*)GetProcAddress(HM, "ULExecDllMain");
 	ULFreeLibrary= (t_ULFreeLibrary*)GetProcAddress(HM, "ULFreeLibrary");
 	HMODULE HM2 = LoadLibraryA("C:\\Windows\\Sysnative\\Wow64.dll");
+	if (HM2 == 0) { HM2 = LoadLibraryA("C:\\Windows\\System32\\Wow64.dll"); }
 	if (HM2 == 0) { return STATUS_INVALID_ADDRESS; }
 	Wow64SystemServiceEx = (t_Wow64SystemServiceEx*)GetProcAddress(HM2,"Wow64SystemServiceEx");
-	HMODULE HM3 = LoadLibraryA("C:\\Windows\\Sysnative\\ntdll.dll");
+	/*HMODULE HM3 = LoadLibraryA("C:\\Windows\\Sysnative\\ntdll.dll");
+	if (HM3 == 0) { HM3 = LoadLibraryA("C:\\Windows\\System32\\ntdll.dll"); }
 	if (HM3 == 0) { return STATUS_INVALID_ADDRESS; }
 	RtlAllocateHeap = (t_RtlAllocateHeap*)GetProcAddress(HM3, "RtlAllocateHeap");
 	NtSetInformationThread_alternative = (t_NtSetInformationThread*)GetProcAddress(HM3, "NtSetInformationThread");
 	NtQueryInformationThread_alternative = (t_NtQueryInformationThread*)GetProcAddress(HM3, "NtQueryInformationThread");
-	RtlWow64GetCurrentCpuArea = (t_RtlWow64GetCurrentCpuArea*)GetProcAddress(HM3, "RtlWow64GetCurrentCpuArea");
+	RtlWow64GetCurrentCpuArea = (t_RtlWow64GetCurrentCpuArea*)GetProcAddress(HM3, "RtlWow64GetCurrentCpuArea");*/
 
 	WOW64INFO* wow64info = (WOW64INFO*)NtCurrentTeb()->TlsSlots[10];
 	wow64info->CpuFlags |= 1;
