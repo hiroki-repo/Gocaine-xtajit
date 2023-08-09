@@ -250,6 +250,24 @@ MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 #include "cpu.h"
 #include "ntstatus.h"
 
+typedef struct
+{
+	ULONG   version;
+	ULONG   unknown1[3];
+	ULONG64 unknown2;
+	ULONG64 pLdrInitializeThunk;
+	ULONG64 pKiUserExceptionDispatcher;
+	ULONG64 pKiUserApcDispatcher;
+	ULONG64 pKiUserCallbackDispatcher;
+	ULONG64 pRtlUserThreadStart;
+	ULONG64 pRtlpQueryProcessDebugInformationRemote;
+	ULONG64 ntdll_handle;
+	ULONG64 pLdrSystemDllInitBlock;
+	ULONG64 pRtlpFreezeTimeBias;
+} SYSTEM_DLL_INIT_BLOCK;
+
+SYSTEM_DLL_INIT_BLOCK* pLdrSystemDllInitBlock = NULL;
+
 typedef NTSYSAPI PVOID t_RtlAllocateHeap(PVOID,ULONG,SIZE_T);
 t_RtlAllocateHeap* RtlAllocateHeap = 0;
 typedef NTSYSCALLAPI NTSTATUS t_NtSetInformationThread(HANDLE,THREADINFOCLASS,PVOID,ULONG);
@@ -284,6 +302,9 @@ HMODULE hmhm4dll;
 typedef NTSYSAPI NTSTATUS  WINAPI t_LdrDisableThreadCalloutsForDll(HMODULE);
 t_LdrDisableThreadCalloutsForDll* LdrDisableThreadCalloutsForDll;
 
+static NTSTATUS(WINAPI* p__wine_unix_call)(UINT64, unsigned int, void*);
+typedef NTSTATUS WINAPI t__wine_unix_call(UINT64, unsigned int, void*);
+
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
@@ -292,6 +313,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 	HMODULE hofntdll = 0;
 	HMODULE HM = 0;
 	HMODULE HM2 = 0;
+	HMODULE HMHM = 0;
+	t_CPU_INIT* CPU_INIT = 0;
+	t_CPU_RESET* CPU_RESET = 0;
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
@@ -305,6 +329,10 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		NtQueryInformationThread_alternative = (t_NtQueryInformationThread*)GetProcAddress(hofntdll, "NtQueryInformationThread");
 		RtlWow64GetCurrentCpuArea = (t_RtlWow64GetCurrentCpuArea*)GetProcAddress(hofntdll, "RtlWow64GetCurrentCpuArea");
 		LdrDisableThreadCalloutsForDll(hModule);
+		pLdrSystemDllInitBlock = (SYSTEM_DLL_INIT_BLOCK*)GetProcAddress(hofntdll,"LdrSystemDllInitBlock");
+		if (pLdrSystemDllInitBlock != 0) {
+			if (pLdrSystemDllInitBlock->ntdll_handle == 0) { pLdrSystemDllInitBlock->ntdll_handle = (ULONG64)hofntdll; }
+		}
 		HM = LoadLibraryA("C:\\Windows\\Sysnative\\ULDllLoader.dll");
 		if (HM == 0) { HM = LoadLibraryA("C:\\Windows\\System32\\ULDllLoader.dll"); }
 		if (HM == 0) { return false; }
@@ -316,6 +344,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		if (HM2 == 0) { HM2 = LoadLibraryA("C:\\Windows\\System32\\Wow64.dll"); }
 		if (HM2 == 0) { return false; }
 		Wow64SystemServiceEx = (t_Wow64SystemServiceEx*)GetProcAddress(HM2, "Wow64SystemServiceEx");
+		if (!p__wine_unix_call) {
+			p__wine_unix_call = (t__wine_unix_call*)GetProcAddress(hofntdll, "__wine_unix_call");
+		}
 	case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:
@@ -583,8 +614,6 @@ typedef struct _WOW64INFO
 char gdt[1024*9],* idt, * ldt;
 
 static inline void* get_wow_teb(__TEB* teb) { return teb->WowTebOffset ? (void*)((char*)teb + teb->WowTebOffset) : NULL; }
-static NTSTATUS(WINAPI* p__wine_unix_call)(UINT64, unsigned int, void*);
-typedef NTSTATUS WINAPI t__wine_unix_call(UINT64, unsigned int, void*);
 
 class memaccessandpt{
 public:
@@ -729,10 +758,6 @@ public:
 				_this->i386core->s.remainclock = 0;
 			}
 			else if (prm_0 == 4) {
-				if (!p__wine_unix_call) {
-					HMODULE HM = LoadLibraryA("C:\\Windows\\Sysnative\\ntdll.dll");
-					p__wine_unix_call = (t__wine_unix_call*)GetProcAddress(HM, "__wine_unix_call");
-				}
 				UINT32* p = (UINT32*)ULongToPtr(_this->i386_context->Esp);
 				ret = p__wine_unix_call((*(UINT64*)((void*)&p[1])),(UINT32)p[3],ULongToPtr(p[4]));
 				_this->i386finish = true;
@@ -772,8 +797,8 @@ extern "C" {
 	NtQueryInformationThread_alternative = (t_NtQueryInformationThread*)GetProcAddress(HM3, "NtQueryInformationThread");
 	RtlWow64GetCurrentCpuArea = (t_RtlWow64GetCurrentCpuArea*)GetProcAddress(HM3, "RtlWow64GetCurrentCpuArea");*/
 
-	WOW64INFO* wow64info = (WOW64INFO*)NtCurrentTeb()->TlsSlots[10];
-	wow64info->CpuFlags |= 1;
+	/*WOW64INFO* wow64info = (WOW64INFO*)NtCurrentTeb()->TlsSlots[10];
+	wow64info->CpuFlags |= 1;*/
 
 	return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuThreadInit(void) { idt = (char*)RtlAllocateHeap(GetProcessHeap(),HEAP_ZERO_MEMORY,256*8); ldt = (char*)RtlAllocateHeap(GetProcessHeap(), HEAP_ZERO_MEMORY, 256 * 8); return STATUS_SUCCESS; }
@@ -792,18 +817,12 @@ extern "C" {
 		I386_CONTEXT* wow_context;
 		NTSTATUS ret;
 		RtlWow64GetCurrentCpuArea(NULL,(void**)&wow_context,NULL);
-		char Buff_a[2048];
-		char Buff_nf[2048];
-		GetModuleFileNameA(hmhm4dll, Buff_nf, 2048);
-		char* P = strrchr(Buff_nf, '\\');
-		if (P)
-			* P = 0;
-		sprintf_s(Buff_a, "%s\\%s", Buff_nf, "np21w_emu.dll");
 		PVOID oldvalue4wd;
 		Wow64DisableWow64FsRedirection(&oldvalue4wd);
-		void* HM = ULLoadLibraryA(Buff_a);
-		if (HM == 0) { HM = ULLoadLibraryA((char *)"C:\\Windows\\Sysnative\\np21w_emu.dll"); }
+		void* HM = ULLoadLibraryA((char *)"C:\\Windows\\Sysnative\\np21w_emu.dll");
+		if (HM == 0) { HM = ULLoadLibraryA((char *)"C:\\Windows\\System32\\np21w_emu.dll"); }
 		Wow64RevertWow64FsRedirection(oldvalue4wd);
+		if (HM == 0) { return; }
 		//ULExecDllMain(HM, 1);
 		CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
 		CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(HM, "CPU_EXECUTE_CC");
@@ -812,6 +831,7 @@ extern "C" {
 		CPU_RESET = (t_CPU_RESET*)ULGetProcAddress(HM, "CPU_RESET");
 		CPU_BUS_SIZE_CHANGE = (t_CPU_BUS_SIZE_CHANGE*)ULGetProcAddress(HM, "CPU_BUS_SIZE_CHANGE");
 		CPU_SWITCH_PM = (t_CPU_SWITCH_PM*)ULGetProcAddress(HM, "CPU_SWITCH_PM");
+		if (CPU_INIT == 0 || CPU_RESET == 0) { return; }
 		CPU_INIT();
 		CPU_RESET();
 		CPU_BUS_SIZE_CHANGE(0x200);
