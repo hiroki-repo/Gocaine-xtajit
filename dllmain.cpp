@@ -753,15 +753,19 @@ public:
 			UINT32 ret = 0;
 			_this->setntc(_this->i386_context);
 			if (prm_0 == 0) {
-				ret = Wow64SystemServiceEx(_this->i386_context->Eax,(UINT*)ULongToPtr(_this->i386_context->Esp+8));
-				_this->i386finish = true;
-				_this->i386core->s.remainclock = 0;
+				if (Wow64SystemServiceEx != 0) {
+					ret = Wow64SystemServiceEx(_this->i386_context->Eax, (UINT*)ULongToPtr(_this->i386_context->Esp + 8));
+					_this->i386finish = true;
+					_this->i386core->s.remainclock = 0;
+				}
 			}
 			else if (prm_0 == 4) {
 				UINT32* p = (UINT32*)ULongToPtr(_this->i386_context->Esp);
-				ret = p__wine_unix_call((*(UINT64*)((void*)&p[1])),(UINT32)p[3],ULongToPtr(p[4]));
-				_this->i386finish = true;
-				_this->i386core->s.remainclock = 0;
+				if (p__wine_unix_call != 0) {
+					ret = p__wine_unix_call((*(UINT64*)((void*)&p[1])), (UINT32)p[3], ULongToPtr(p[4]));
+					_this->i386finish = true;
+					_this->i386core->s.remainclock = 0;
+				}
 			}
 			_this->setctn(_this->i386_context,0);
 			return ret;
@@ -818,10 +822,10 @@ extern "C" {
 		NTSTATUS ret;
 		RtlWow64GetCurrentCpuArea(NULL,(void**)&wow_context,NULL);
 		PVOID oldvalue4wd;
-		Wow64DisableWow64FsRedirection(&oldvalue4wd);
+		//Wow64DisableWow64FsRedirection(&oldvalue4wd);
 		void* HM = ULLoadLibraryA((char *)"C:\\Windows\\Sysnative\\np21w_emu.dll");
 		if (HM == 0) { HM = ULLoadLibraryA((char *)"C:\\Windows\\System32\\np21w_emu.dll"); }
-		Wow64RevertWow64FsRedirection(oldvalue4wd);
+		//Wow64RevertWow64FsRedirection(oldvalue4wd);
 		if (HM == 0) { return; }
 		//ULExecDllMain(HM, 1);
 		CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
