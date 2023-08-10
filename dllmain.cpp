@@ -829,7 +829,7 @@ extern "C" {
 		if (HM == 0) { return; }
 		//ULExecDllMain(HM, 1);
 		CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
-		CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(HM, "CPU_EXECUTE_CC");
+		CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(HM, "CPU_EXECUTE_CC_V2");
 		CPU_SET_MACTLFC = (t_CPU_SET_MACTLFC*)ULGetProcAddress(HM, "CPU_SET_MACTLFC");
 		CPU_INIT = (t_CPU_INIT*)ULGetProcAddress(HM, "CPU_INIT");
 		CPU_RESET = (t_CPU_RESET*)ULGetProcAddress(HM, "CPU_RESET");
