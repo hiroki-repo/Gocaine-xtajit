@@ -742,14 +742,14 @@ public:
 		}
 	}
 	static UINT32 i386memaccess(memaccessandpt * _this,int prm_0, int prm_1, int prm_2) {
-		switch (prm_2 & 0xFF) {
+		switch (prm_2 & 3) {
 		case 0:
 			(*(UINT8*)(prm_0)) = prm_1;
 			break;
 		case 1:
 			return (*(UINT8*)(prm_0));
 			break;
-		case 0x23:
+		case 3:
 			UINT32 ret = 0;
 			_this->setntc(_this->i386_context);
 			if (prm_0 == 0) {
@@ -767,6 +767,7 @@ public:
 					_this->i386core->s.remainclock = 0;
 				}
 			}
+			_this->i386_context->Eax = ret;
 			_this->setctn(_this->i386_context,0);
 			return ret;
 			break;
@@ -803,9 +804,8 @@ extern "C" {
 
 	/*WOW64INFO* wow64info = (WOW64INFO*)NtCurrentTeb()->TlsSlots[10];
 	wow64info->CpuFlags |= 1;*/
-
 	return STATUS_SUCCESS; }
-	__declspec(dllexport) NTSTATUS WINAPI BTCpuThreadInit(void) { idt = (char*)RtlAllocateHeap(GetProcessHeap(),HEAP_ZERO_MEMORY,256*8); ldt = (char*)RtlAllocateHeap(GetProcessHeap(), HEAP_ZERO_MEMORY, 256 * 8); return STATUS_SUCCESS; }
+	__declspec(dllexport) NTSTATUS WINAPI BTCpuThreadInit(void) { idt = (char*)RtlAllocateHeap(GetProcessHeap(),HEAP_ZERO_MEMORY,255*8); ldt = (char*)RtlAllocateHeap(GetProcessHeap(), HEAP_ZERO_MEMORY, 256 * 8); return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuResetToConsistentState(EXCEPTION_POINTERS* ptrs) { return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuSetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtSetInformationThread(thread, ThreadWow64Context, ctx, sizeof(*ctx)); }
 	__declspec(dllexport) void WINAPI BTCpuSimulate(void) {
