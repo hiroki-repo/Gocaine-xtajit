@@ -1,5 +1,5 @@
 # Gocaine-xtajit
-is a x86 code emulator for AArch64 Wine! But Sorry to say that we have to test it.
+is a x86 code emulator for AArch64 Wine!
 
 # Requirement to make use of the softwore
 Wine 8.0 or more
