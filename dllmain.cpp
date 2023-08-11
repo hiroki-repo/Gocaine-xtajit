@@ -620,6 +620,7 @@ public:
 	I386CORE* i386core;
 	I386_CONTEXT* i386_context;
 	bool i386finish = false;
+	UINT8 wow64svctype = 0;
 	void setctn(I386_CONTEXT* ctx, int firsttime) {
 		__TEB* teb = (__TEB*)NtCurrentTeb();
 		void* wowteb = get_wow_teb(teb);
@@ -765,22 +766,28 @@ public:
 			UINT32 ret = 0;
 			_this->setntc(_this->i386_context);
 			if (prm_0 == 0) {
-				if (Wow64SystemServiceEx != 0) {
+				/*if (Wow64SystemServiceEx != 0) {
 					ret = Wow64SystemServiceEx(_this->i386_context->Eax, (UINT*)ULongToPtr(_this->i386_context->Esp + 8));
 					_this->i386finish = true;
 					_this->i386core->s.remainclock = 0;
-				}
+				}*/
+				_this->wow64svctype = 1;
+				_this->i386finish = true;
+				_this->i386core->s.remainclock = 0;
 			}
 			else if (prm_0 == 4) {
-				UINT32* p = (UINT32*)ULongToPtr(_this->i386_context->Esp);
+				/*UINT32* p = (UINT32*)ULongToPtr(_this->i386_context->Esp);
 				if (p__wine_unix_call != 0) {
 					ret = p__wine_unix_call((*(UINT64*)((void*)&p[1])), (UINT32)p[3], ULongToPtr(p[4]));
 					_this->i386finish = true;
 					_this->i386core->s.remainclock = 0;
-				}
+				}*/
+				_this->wow64svctype = 2;
+				_this->i386finish = true;
+				_this->i386core->s.remainclock = 0;
 			}
-			_this->i386_context->Eax = ret;
-			_this->setctn(_this->i386_context,0);
+			//_this->i386_context->Eax = ret;
+			//_this->setctn(_this->i386_context,0);
 			return ret;
 			break;
 		}
@@ -944,10 +951,23 @@ extern "C" {
 		CPU_SET_MACTLFC((UINT32(*)(int,int,int))funcofmemaccess);
 		memtmp->i386finish = false;
 		while (memtmp->i386finish == false) { CPU_EXECUTE_CC(0x7fffffff); }
-		memtmp->setntc(wow_context);
+		//memtmp->setntc(wow_context);
+		UINT8 svctype = memtmp->wow64svctype;
 		delete(memtmp);
 		ULFreeLibrary(HM);
 		VirtualFree(funcofmemaccess,0,0x8000);
+		UINT32* p = (UINT32*)ULongToPtr(wow_context->Esp);
+		switch (svctype) {
+		case 1:
+			wow_context->Eax = Wow64SystemServiceEx(wow_context->Eax, (UINT*)ULongToPtr(wow_context->Esp + 8));
+			break;
+		case 2:
+			if (p__wine_unix_call != 0) {
+				wow_context->Eax = p__wine_unix_call((*(UINT64*)((void*)&p[1])), (UINT32)p[3], ULongToPtr(p[4]));
+			}
+			break;
+		}
+		return;
 	}
 	__declspec(dllexport) void* WINAPI __wine_get_unix_opcode(void) { return (UINT32*)&unixbopcode; }
 	__declspec(dllexport) BOOLEAN WINAPI BTCpuIsProcessorFeaturePresent(UINT feature) { if (feature == 1 || feature == 2 || feature == 3 || feature == 6 || feature == 7 || feature == 8 || feature == 10 || feature == 13) { return true; }return false; }
