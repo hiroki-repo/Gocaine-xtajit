@@ -250,6 +250,13 @@ MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 #include "cpu.h"
 #include "ntstatus.h"
 
+#define EMU_ID_MAX 16
+
+struct {
+	bool inuse;
+	void* np21w;
+} emusemaphore[EMU_ID_MAX];
+
 typedef struct
 {
 	ULONG   version;
@@ -346,6 +353,10 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		Wow64SystemServiceEx = (t_Wow64SystemServiceEx*)GetProcAddress(HM2, "Wow64SystemServiceEx");
 		if (!p__wine_unix_call) {
 			p__wine_unix_call = (t__wine_unix_call*)GetProcAddress(hofntdll, "__wine_unix_call");
+		}
+		for (int i = 0; i < EMU_ID_MAX; i++) {
+			emusemaphore[i].inuse = false;
+			emusemaphore[i].np21w = ULLoadLibraryA((char*)"C:\\Windows\\System32\\np21w_emu.dll");
 		}
 	case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
@@ -836,15 +847,26 @@ extern "C" {
 		t_CPU_BUS_SIZE_CHANGE* CPU_BUS_SIZE_CHANGE = 0;
 		t_CPU_SWITCH_PM* CPU_SWITCH_PM = 0;
 
+		int EMU_ID = -1;
+
+		for (int cnt = 0; cnt < EMU_ID_MAX; cnt++) { if (emusemaphore[cnt].inuse == false) { EMU_ID = cnt; break; } }
+
 		char retptx[] = {0xf4,0xeb,0xfd,0x00};
 		I386_CONTEXT* wow_context;
 		NTSTATUS ret;
 		RtlWow64GetCurrentCpuArea(NULL,(void**)&wow_context,NULL);
 		PVOID oldvalue4wd;
-		//Wow64DisableWow64FsRedirection(&oldvalue4wd);
-		void* HM = ULLoadLibraryA((char *)"C:\\Windows\\Sysnative\\np21w_emu.dll");
-		if (HM == 0) { HM = ULLoadLibraryA((char *)"C:\\Windows\\System32\\np21w_emu.dll"); }
-		//Wow64RevertWow64FsRedirection(oldvalue4wd);
+		void* HM = 0;
+		if (EMU_ID != -1) {
+			emusemaphore[EMU_ID].inuse = true;
+			void* HM = emusemaphore[EMU_ID].np21w;
+		}
+		else {
+			//Wow64DisableWow64FsRedirection(&oldvalue4wd);
+			HM = ULLoadLibraryA((char*)"C:\\Windows\\Sysnative\\np21w_emu.dll");
+			if (HM == 0) { HM = ULLoadLibraryA((char*)"C:\\Windows\\System32\\np21w_emu.dll"); }
+			//Wow64RevertWow64FsRedirection(oldvalue4wd);
+		}
 		if (HM == 0) { return; }
 		//ULExecDllMain(HM, 1);
 		CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
@@ -954,7 +976,12 @@ extern "C" {
 		//memtmp->setntc(wow_context);
 		UINT8 svctype = memtmp->wow64svctype;
 		delete(memtmp);
-		ULFreeLibrary(HM);
+		if (EMU_ID != -1) {
+			emusemaphore[EMU_ID].inuse = false;
+		}
+		else {
+			ULFreeLibrary(HM);
+		}
 		VirtualFree(funcofmemaccess,0,0x8000);
 		UINT32* p = (UINT32*)ULongToPtr(wow_context->Esp);
 		switch (svctype) {
