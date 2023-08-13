@@ -250,11 +250,27 @@ MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 #include "cpu.h"
 #include "ntstatus.h"
 
+typedef void* t_CPU_GET_REGPTR(int);
+typedef int t_CPU_EXECUTE_CC(int);
+typedef void t_CPU_SET_MACTLFC(UINT32(*)(int, int, int));
+typedef void t_CPU_INIT();
+typedef void t_CPU_RESET();
+typedef void t_CPU_BUS_SIZE_CHANGE(int);
+typedef void t_CPU_SWITCH_PM(bool);
+
 #define EMU_ID_MAX 16
 
 struct {
 	bool inuse;
 	void* np21w;
+	t_CPU_GET_REGPTR* CPU_GET_REGPTR = 0;
+	t_CPU_EXECUTE_CC* CPU_EXECUTE_CC = 0;
+	t_CPU_SET_MACTLFC* CPU_SET_MACTLFC = 0;
+	t_CPU_INIT* CPU_INIT = 0;
+	t_CPU_RESET* CPU_RESET = 0;
+	t_CPU_BUS_SIZE_CHANGE* CPU_BUS_SIZE_CHANGE = 0;
+	t_CPU_SWITCH_PM* CPU_SWITCH_PM = 0;
+	bool notfirsttime = false;
 } emusemaphore[EMU_ID_MAX];
 
 typedef struct
@@ -295,14 +311,6 @@ typedef BOOL t_ULExecDllMain(void*, UINT32);
 t_ULExecDllMain* ULExecDllMain = 0;
 typedef BOOL t_ULFreeLibrary(void*);
 t_ULFreeLibrary* ULFreeLibrary = 0;
-
-typedef void* t_CPU_GET_REGPTR(int);
-typedef int t_CPU_EXECUTE_CC(int);
-typedef void t_CPU_SET_MACTLFC(UINT32(*)(int, int, int));
-typedef void t_CPU_INIT();
-typedef void t_CPU_RESET();
-typedef void t_CPU_BUS_SIZE_CHANGE(int);
-typedef void t_CPU_SWITCH_PM(bool);
 
 HMODULE hmhm4dll;
 
@@ -357,6 +365,14 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		for (int i = 0; i < EMU_ID_MAX; i++) {
 			emusemaphore[i].inuse = false;
 			emusemaphore[i].np21w = ULLoadLibraryA((char*)"C:\\Windows\\System32\\np21w_emu.dll");
+			emusemaphore[i].CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(emusemaphore[i].np21w, "CPU_GET_REGPTR");
+			emusemaphore[i].CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(emusemaphore[i].np21w, "CPU_EXECUTE_CC_V2");
+			emusemaphore[i].CPU_SET_MACTLFC = (t_CPU_SET_MACTLFC*)ULGetProcAddress(emusemaphore[i].np21w, "CPU_SET_MACTLFC");
+			emusemaphore[i].CPU_INIT = (t_CPU_INIT*)ULGetProcAddress(emusemaphore[i].np21w, "CPU_INIT");
+			emusemaphore[i].CPU_RESET = (t_CPU_RESET*)ULGetProcAddress(emusemaphore[i].np21w, "CPU_RESET");
+			emusemaphore[i].CPU_BUS_SIZE_CHANGE = (t_CPU_BUS_SIZE_CHANGE*)ULGetProcAddress(emusemaphore[i].np21w, "CPU_BUS_SIZE_CHANGE");
+			emusemaphore[i].CPU_SWITCH_PM = (t_CPU_SWITCH_PM*)ULGetProcAddress(emusemaphore[i].np21w, "CPU_SWITCH_PM");
+			emusemaphore[i].notfirsttime = false;
 		}
 	case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
@@ -869,16 +885,32 @@ extern "C" {
 		}
 		if (HM == 0) { return; }
 		//ULExecDllMain(HM, 1);
-		CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
-		CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(HM, "CPU_EXECUTE_CC_V2");
-		CPU_SET_MACTLFC = (t_CPU_SET_MACTLFC*)ULGetProcAddress(HM, "CPU_SET_MACTLFC");
-		CPU_INIT = (t_CPU_INIT*)ULGetProcAddress(HM, "CPU_INIT");
-		CPU_RESET = (t_CPU_RESET*)ULGetProcAddress(HM, "CPU_RESET");
-		CPU_BUS_SIZE_CHANGE = (t_CPU_BUS_SIZE_CHANGE*)ULGetProcAddress(HM, "CPU_BUS_SIZE_CHANGE");
-		CPU_SWITCH_PM = (t_CPU_SWITCH_PM*)ULGetProcAddress(HM, "CPU_SWITCH_PM");
-		if (CPU_INIT == 0 || CPU_RESET == 0) { return; }
-		CPU_INIT();
-		CPU_RESET();
+		if (EMU_ID != -1) {
+			CPU_GET_REGPTR = emusemaphore[EMU_ID].CPU_GET_REGPTR;
+			CPU_EXECUTE_CC = emusemaphore[EMU_ID].CPU_EXECUTE_CC;
+			CPU_SET_MACTLFC = emusemaphore[EMU_ID].CPU_SET_MACTLFC;
+			CPU_INIT = emusemaphore[EMU_ID].CPU_INIT;
+			CPU_RESET = emusemaphore[EMU_ID].CPU_RESET;
+			CPU_BUS_SIZE_CHANGE = emusemaphore[EMU_ID].CPU_BUS_SIZE_CHANGE;
+			CPU_SWITCH_PM = emusemaphore[EMU_ID].CPU_SWITCH_PM;
+			if (emusemaphore[EMU_ID].notfirsttime == false) {
+				CPU_INIT();
+				CPU_RESET();
+				emusemaphore[EMU_ID].notfirsttime = true;
+			}
+		}
+		else {
+			CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
+			CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(HM, "CPU_EXECUTE_CC_V2");
+			CPU_SET_MACTLFC = (t_CPU_SET_MACTLFC*)ULGetProcAddress(HM, "CPU_SET_MACTLFC");
+			CPU_INIT = (t_CPU_INIT*)ULGetProcAddress(HM, "CPU_INIT");
+			CPU_RESET = (t_CPU_RESET*)ULGetProcAddress(HM, "CPU_RESET");
+			CPU_BUS_SIZE_CHANGE = (t_CPU_BUS_SIZE_CHANGE*)ULGetProcAddress(HM, "CPU_BUS_SIZE_CHANGE");
+			CPU_SWITCH_PM = (t_CPU_SWITCH_PM*)ULGetProcAddress(HM, "CPU_SWITCH_PM");
+			CPU_INIT();
+			CPU_RESET();
+		}
+		//if (CPU_INIT == 0 || CPU_RESET == 0) { return; }
 		CPU_BUS_SIZE_CHANGE(0x202);
 		memaccessandpt* memtmp = new memaccessandpt;
 		memtmp->i386core = (I386CORE*)CPU_GET_REGPTR(5);
