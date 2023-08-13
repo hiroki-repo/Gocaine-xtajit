@@ -258,6 +258,8 @@ typedef void t_CPU_RESET();
 typedef void t_CPU_BUS_SIZE_CHANGE(int);
 typedef void t_CPU_SWITCH_PM(bool);
 
+extern class memaccessandpt;
+
 #define EMU_ID_MAX 16
 
 struct {
@@ -271,6 +273,7 @@ struct {
 	t_CPU_BUS_SIZE_CHANGE* CPU_BUS_SIZE_CHANGE = 0;
 	t_CPU_SWITCH_PM* CPU_SWITCH_PM = 0;
 	bool notfirsttime = false;
+	memaccessandpt* memtmp;
 } emusemaphore[EMU_ID_MAX];
 
 typedef struct
@@ -828,29 +831,7 @@ extern "C" {
 
 	__declspec(dllexport) void* WINAPI BTCpuGetBopCode(void) { return (UINT32*)&bopcode; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuGetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtQueryInformationThread(thread,ThreadWow64Context,ctx,sizeof(*ctx),NULL); }
-	__declspec(dllexport) NTSTATUS WINAPI BTCpuProcessInit(void) { if ((ULONG_PTR)BTCpuProcessInit >> 32) { return STATUS_INVALID_ADDRESS; }
-	/*HMODULE HM = LoadLibraryA("C:\\Windows\\Sysnative\\ULDllLoader.dll");
-	if (HM == 0) { HM = LoadLibraryA("C:\\Windows\\System32\\ULDllLoader.dll"); }
-	if (HM == 0) { return STATUS_INVALID_ADDRESS; }
-	ULLoadLibraryA = (t_ULLoadLibraryA*)GetProcAddress(HM, "ULLoadLibraryA");
-	ULGetProcAddress = (t_ULGetProcAddress*)GetProcAddress(HM, "ULGetProcAddress");
-	ULExecDllMain = (t_ULExecDllMain*)GetProcAddress(HM, "ULExecDllMain");
-	ULFreeLibrary= (t_ULFreeLibrary*)GetProcAddress(HM, "ULFreeLibrary");
-	HMODULE HM2 = LoadLibraryA("C:\\Windows\\Sysnative\\Wow64.dll");
-	if (HM2 == 0) { HM2 = LoadLibraryA("C:\\Windows\\System32\\Wow64.dll"); }
-	if (HM2 == 0) { return STATUS_INVALID_ADDRESS; }
-	Wow64SystemServiceEx = (t_Wow64SystemServiceEx*)GetProcAddress(HM2,"Wow64SystemServiceEx");
-	HMODULE HM3 = LoadLibraryA("C:\\Windows\\Sysnative\\ntdll.dll");
-	if (HM3 == 0) { HM3 = LoadLibraryA("C:\\Windows\\System32\\ntdll.dll"); }
-	if (HM3 == 0) { return STATUS_INVALID_ADDRESS; }
-	RtlAllocateHeap = (t_RtlAllocateHeap*)GetProcAddress(HM3, "RtlAllocateHeap");
-	NtSetInformationThread_alternative = (t_NtSetInformationThread*)GetProcAddress(HM3, "NtSetInformationThread");
-	NtQueryInformationThread_alternative = (t_NtQueryInformationThread*)GetProcAddress(HM3, "NtQueryInformationThread");
-	RtlWow64GetCurrentCpuArea = (t_RtlWow64GetCurrentCpuArea*)GetProcAddress(HM3, "RtlWow64GetCurrentCpuArea");*/
-
-	/*WOW64INFO* wow64info = (WOW64INFO*)NtCurrentTeb()->TlsSlots[10];
-	wow64info->CpuFlags |= 1;*/
-	return STATUS_SUCCESS; }
+	__declspec(dllexport) NTSTATUS WINAPI BTCpuProcessInit(void) { if ((ULONG_PTR)BTCpuProcessInit >> 32) { return STATUS_INVALID_ADDRESS; } return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuThreadInit(void) { idt = (char*)RtlAllocateHeap(GetProcessHeap(),HEAP_ZERO_MEMORY,255*8); ldt = (char*)RtlAllocateHeap(GetProcessHeap(), HEAP_ZERO_MEMORY, 256 * 8); return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuResetToConsistentState(EXCEPTION_POINTERS* ptrs) { return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuSetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtSetInformationThread(thread, ThreadWow64Context, ctx, sizeof(*ctx)); }
@@ -885,6 +866,7 @@ extern "C" {
 		}
 		if (HM == 0) { return; }
 		//ULExecDllMain(HM, 1);
+		memaccessandpt* memtmp;
 		if (EMU_ID != -1) {
 			CPU_GET_REGPTR = emusemaphore[EMU_ID].CPU_GET_REGPTR;
 			CPU_EXECUTE_CC = emusemaphore[EMU_ID].CPU_EXECUTE_CC;
@@ -896,8 +878,12 @@ extern "C" {
 			if (emusemaphore[EMU_ID].notfirsttime == false) {
 				CPU_INIT();
 				CPU_RESET();
+				CPU_BUS_SIZE_CHANGE(0x202);
+				emusemaphore[EMU_ID].memtmp = new memaccessandpt;
+				CPU_SWITCH_PM(1);
 				emusemaphore[EMU_ID].notfirsttime = true;
 			}
+			memtmp = emusemaphore[EMU_ID].memtmp;
 		}
 		else {
 			CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
@@ -909,13 +895,12 @@ extern "C" {
 			CPU_SWITCH_PM = (t_CPU_SWITCH_PM*)ULGetProcAddress(HM, "CPU_SWITCH_PM");
 			CPU_INIT();
 			CPU_RESET();
+			CPU_BUS_SIZE_CHANGE(0x202);
+			memtmp = new memaccessandpt;
+			CPU_SWITCH_PM(1);
 		}
-		//if (CPU_INIT == 0 || CPU_RESET == 0) { return; }
-		CPU_BUS_SIZE_CHANGE(0x202);
-		memaccessandpt* memtmp = new memaccessandpt;
 		memtmp->i386core = (I386CORE*)CPU_GET_REGPTR(5);
 		memtmp->i386_context = wow_context;
-		CPU_SWITCH_PM(1);
 		memtmp->setctn(wow_context,1);
 #ifdef _ARM64_
 		/*
@@ -1007,11 +992,11 @@ extern "C" {
 		while (memtmp->i386finish == false) { CPU_EXECUTE_CC(0x7fffffff); }
 		//memtmp->setntc(wow_context);
 		UINT8 svctype = memtmp->wow64svctype;
-		delete(memtmp);
 		if (EMU_ID != -1) {
 			emusemaphore[EMU_ID].inuse = false;
 		}
 		else {
+			delete(memtmp);
 			ULFreeLibrary(HM);
 		}
 		VirtualFree(funcofmemaccess,0,0x8000);
