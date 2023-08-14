@@ -850,62 +850,70 @@ extern "C" {
 		NTSTATUS ret;
 		RtlWow64GetCurrentCpuArea(NULL, (void**)&wow_context, NULL);
 
-emustart:
+		char retptx[] = { 0xf4,0xeb,0xfd,0x00 };
+		PVOID oldvalue4wd;
+		void* HM = 0;
+		memaccessandpt* memtmp = 0;
+		int EMU_ID_OLD = -1;
+	emustart:
 		int EMU_ID = -1;
 
 		for (int cnt = 0; cnt < EMU_ID_MAX; cnt++) { if (emusemaphore[cnt].inuse == false) { EMU_ID = cnt; break; } }
 
-		char retptx[] = {0xf4,0xeb,0xfd,0x00};
-		PVOID oldvalue4wd;
-		void* HM = 0;
-		if (EMU_ID != -1) {
-			emusemaphore[EMU_ID].inuse = true;
-			void* HM = emusemaphore[EMU_ID].np21w;
-		}
-		else {
-			//Wow64DisableWow64FsRedirection(&oldvalue4wd);
-			HM = ULLoadLibraryA((char*)"C:\\Windows\\Sysnative\\np21w_emu.dll");
-			if (HM == 0) { HM = ULLoadLibraryA((char*)"C:\\Windows\\System32\\np21w_emu.dll"); }
-			//Wow64RevertWow64FsRedirection(oldvalue4wd);
-		}
-		if (HM == 0) { return; }
-		//ULExecDllMain(HM, 1);
-		memaccessandpt* memtmp;
-		if (EMU_ID != -1) {
-			CPU_GET_REGPTR = emusemaphore[EMU_ID].CPU_GET_REGPTR;
-			CPU_EXECUTE_CC = emusemaphore[EMU_ID].CPU_EXECUTE_CC;
-			CPU_SET_MACTLFC = emusemaphore[EMU_ID].CPU_SET_MACTLFC;
-			CPU_INIT = emusemaphore[EMU_ID].CPU_INIT;
-			CPU_RESET = emusemaphore[EMU_ID].CPU_RESET;
-			CPU_BUS_SIZE_CHANGE = emusemaphore[EMU_ID].CPU_BUS_SIZE_CHANGE;
-			CPU_SWITCH_PM = emusemaphore[EMU_ID].CPU_SWITCH_PM;
-			if (emusemaphore[EMU_ID].notfirsttime == false) {
+		if ((EMU_ID_OLD != EMU_ID) || (EMU_ID == -1)) {
+			if (EMU_ID != -1) {
+				emusemaphore[EMU_ID].inuse = true;
+				void* HM = emusemaphore[EMU_ID].np21w;
+			}
+			else {
+				//Wow64DisableWow64FsRedirection(&oldvalue4wd);
+				HM = ULLoadLibraryA((char*)"C:\\Windows\\Sysnative\\np21w_emu.dll");
+				if (HM == 0) { HM = ULLoadLibraryA((char*)"C:\\Windows\\System32\\np21w_emu.dll"); }
+				//Wow64RevertWow64FsRedirection(oldvalue4wd);
+			}
+			if (HM == 0) { return; }
+			//ULExecDllMain(HM, 1);
+			if (EMU_ID != -1) {
+				CPU_GET_REGPTR = emusemaphore[EMU_ID].CPU_GET_REGPTR;
+				CPU_EXECUTE_CC = emusemaphore[EMU_ID].CPU_EXECUTE_CC;
+				CPU_SET_MACTLFC = emusemaphore[EMU_ID].CPU_SET_MACTLFC;
+				CPU_INIT = emusemaphore[EMU_ID].CPU_INIT;
+				CPU_RESET = emusemaphore[EMU_ID].CPU_RESET;
+				CPU_BUS_SIZE_CHANGE = emusemaphore[EMU_ID].CPU_BUS_SIZE_CHANGE;
+				CPU_SWITCH_PM = emusemaphore[EMU_ID].CPU_SWITCH_PM;
+				if (emusemaphore[EMU_ID].notfirsttime == false) {
+					CPU_INIT();
+					CPU_RESET();
+					CPU_BUS_SIZE_CHANGE(0x202);
+					emusemaphore[EMU_ID].memtmp = new memaccessandpt;
+					CPU_SWITCH_PM(1);
+					emusemaphore[EMU_ID].notfirsttime = true;
+					emusemaphore[EMU_ID].memtmp->i386core = (I386CORE*)CPU_GET_REGPTR(5);
+				}
+				memtmp = emusemaphore[EMU_ID].memtmp;
+			}
+			else {
+				CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
+				CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(HM, "CPU_EXECUTE_CC_V2");
+				CPU_SET_MACTLFC = (t_CPU_SET_MACTLFC*)ULGetProcAddress(HM, "CPU_SET_MACTLFC");
+				CPU_INIT = (t_CPU_INIT*)ULGetProcAddress(HM, "CPU_INIT");
+				CPU_RESET = (t_CPU_RESET*)ULGetProcAddress(HM, "CPU_RESET");
+				CPU_BUS_SIZE_CHANGE = (t_CPU_BUS_SIZE_CHANGE*)ULGetProcAddress(HM, "CPU_BUS_SIZE_CHANGE");
+				CPU_SWITCH_PM = (t_CPU_SWITCH_PM*)ULGetProcAddress(HM, "CPU_SWITCH_PM");
 				CPU_INIT();
 				CPU_RESET();
 				CPU_BUS_SIZE_CHANGE(0x202);
-				emusemaphore[EMU_ID].memtmp = new memaccessandpt;
+				memtmp = new memaccessandpt;
 				CPU_SWITCH_PM(1);
-				emusemaphore[EMU_ID].notfirsttime = true;
-				emusemaphore[EMU_ID].memtmp->i386core = (I386CORE*)CPU_GET_REGPTR(5);
+				memtmp->i386core = (I386CORE*)CPU_GET_REGPTR(5);
 			}
-			memtmp = emusemaphore[EMU_ID].memtmp;
+			memtmp->i386_context = wow_context;
 		}
-		else {
-			CPU_GET_REGPTR = (t_CPU_GET_REGPTR*)ULGetProcAddress(HM, "CPU_GET_REGPTR");
-			CPU_EXECUTE_CC = (t_CPU_EXECUTE_CC*)ULGetProcAddress(HM, "CPU_EXECUTE_CC_V2");
-			CPU_SET_MACTLFC = (t_CPU_SET_MACTLFC*)ULGetProcAddress(HM, "CPU_SET_MACTLFC");
-			CPU_INIT = (t_CPU_INIT*)ULGetProcAddress(HM, "CPU_INIT");
-			CPU_RESET = (t_CPU_RESET*)ULGetProcAddress(HM, "CPU_RESET");
-			CPU_BUS_SIZE_CHANGE = (t_CPU_BUS_SIZE_CHANGE*)ULGetProcAddress(HM, "CPU_BUS_SIZE_CHANGE");
-			CPU_SWITCH_PM = (t_CPU_SWITCH_PM*)ULGetProcAddress(HM, "CPU_SWITCH_PM");
-			CPU_INIT();
-			CPU_RESET();
-			CPU_BUS_SIZE_CHANGE(0x202);
-			memtmp = new memaccessandpt;
-			CPU_SWITCH_PM(1);
-			memtmp->i386core = (I386CORE*)CPU_GET_REGPTR(5);
+		else if (EMU_ID != -1) {
+			emusemaphore[EMU_ID].inuse = true;
 		}
-		memtmp->i386_context = wow_context;
+
+		if (memtmp == 0) { return; }
 		memtmp->setctn(wow_context,1);
 #ifdef _ARM64_
 		/*
@@ -1011,6 +1019,7 @@ emustart:
 			VirtualFree(funcofmemaccess, 0, 0x8000);
 		}
 		UINT32* p = (UINT32*)ULongToPtr(wow_context->Esp);
+		EMU_ID_OLD = EMU_ID;
 		switch (svctype) {
 		case 1:
 			wow_context->Eax = Wow64SystemServiceEx(wow_context->Eax, (UINT*)ULongToPtr(wow_context->Esp + 8));
