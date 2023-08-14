@@ -274,6 +274,7 @@ struct {
 	t_CPU_SWITCH_PM* CPU_SWITCH_PM = 0;
 	bool notfirsttime = false;
 	memaccessandpt* memtmp;
+	char* funcofmemaccess;
 } emusemaphore[EMU_ID_MAX];
 
 typedef struct
@@ -376,6 +377,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 			emusemaphore[i].CPU_BUS_SIZE_CHANGE = (t_CPU_BUS_SIZE_CHANGE*)ULGetProcAddress(emusemaphore[i].np21w, "CPU_BUS_SIZE_CHANGE");
 			emusemaphore[i].CPU_SWITCH_PM = (t_CPU_SWITCH_PM*)ULGetProcAddress(emusemaphore[i].np21w, "CPU_SWITCH_PM");
 			emusemaphore[i].notfirsttime = false;
+			emusemaphore[i].funcofmemaccess = 0;
 		}
 	case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
@@ -980,13 +982,18 @@ extern "C" {
 #endif
 #endif
 		DWORD tmp;
-		char* funcofmemaccess = (char*)VirtualAlloc(0, sizeof(memaccess), 0x3000, 0x40);
-		if (funcofmemaccess != 0) {
-			memcpy(funcofmemaccess, memaccess, sizeof(memaccess));
+		char* funcofmemaccess = 0;
+		if (EMU_ID != -1) { funcofmemaccess = emusemaphore[EMU_ID].funcofmemaccess; }
+		if (funcofmemaccess == 0) {
+			funcofmemaccess = (char*)VirtualAlloc(0, sizeof(memaccess), 0x3000, 0x40);
+			if (funcofmemaccess != 0) {
+				memcpy(funcofmemaccess, memaccess, sizeof(memaccess));
+			}
+			else { return; }
+			VirtualProtect(funcofmemaccess, sizeof(memaccess), 0x20, &tmp);
+			FlushInstructionCache(GetCurrentProcess(), funcofmemaccess, sizeof(memaccess));
+			if (EMU_ID != -1) { emusemaphore[EMU_ID].funcofmemaccess = funcofmemaccess; }
 		}
-		else { return; }
-		VirtualProtect(funcofmemaccess,sizeof(memaccess),0x20,&tmp);
-		FlushInstructionCache(GetCurrentProcess(),funcofmemaccess,sizeof(memaccess));
 		CPU_SET_MACTLFC((UINT32(*)(int,int,int))funcofmemaccess);
 		memtmp->i386finish = false;
 		while (memtmp->i386finish == false) { CPU_EXECUTE_CC(0x7fffffff); }
@@ -998,8 +1005,8 @@ extern "C" {
 		else {
 			delete(memtmp);
 			ULFreeLibrary(HM);
+			VirtualFree(funcofmemaccess, 0, 0x8000);
 		}
-		VirtualFree(funcofmemaccess,0,0x8000);
 		UINT32* p = (UINT32*)ULongToPtr(wow_context->Esp);
 		switch (svctype) {
 		case 1:
