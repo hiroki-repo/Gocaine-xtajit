@@ -846,14 +846,16 @@ extern "C" {
 		t_CPU_BUS_SIZE_CHANGE* CPU_BUS_SIZE_CHANGE = 0;
 		t_CPU_SWITCH_PM* CPU_SWITCH_PM = 0;
 
+		I386_CONTEXT* wow_context;
+		NTSTATUS ret;
+		RtlWow64GetCurrentCpuArea(NULL, (void**)&wow_context, NULL);
+
+emustart:
 		int EMU_ID = -1;
 
 		for (int cnt = 0; cnt < EMU_ID_MAX; cnt++) { if (emusemaphore[cnt].inuse == false) { EMU_ID = cnt; break; } }
 
 		char retptx[] = {0xf4,0xeb,0xfd,0x00};
-		I386_CONTEXT* wow_context;
-		NTSTATUS ret;
-		RtlWow64GetCurrentCpuArea(NULL,(void**)&wow_context,NULL);
 		PVOID oldvalue4wd;
 		void* HM = 0;
 		if (EMU_ID != -1) {
@@ -1012,11 +1014,13 @@ extern "C" {
 		switch (svctype) {
 		case 1:
 			wow_context->Eax = Wow64SystemServiceEx(wow_context->Eax, (UINT*)ULongToPtr(wow_context->Esp + 8));
+			goto emustart;
 			break;
 		case 2:
 			if (p__wine_unix_call != 0) {
 				wow_context->Eax = p__wine_unix_call((*(UINT64*)((void*)&p[1])), (UINT32)p[3], ULongToPtr(p[4]));
 			}
+			goto emustart;
 			break;
 		}
 		return;
