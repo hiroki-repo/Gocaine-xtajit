@@ -884,6 +884,7 @@ extern "C" {
 				emusemaphore[EMU_ID].memtmp = new memaccessandpt;
 				CPU_SWITCH_PM(1);
 				emusemaphore[EMU_ID].notfirsttime = true;
+				emusemaphore[EMU_ID].memtmp->i386core = (I386CORE*)CPU_GET_REGPTR(5);
 			}
 			memtmp = emusemaphore[EMU_ID].memtmp;
 		}
@@ -900,8 +901,8 @@ extern "C" {
 			CPU_BUS_SIZE_CHANGE(0x202);
 			memtmp = new memaccessandpt;
 			CPU_SWITCH_PM(1);
+			memtmp->i386core = (I386CORE*)CPU_GET_REGPTR(5);
 		}
-		memtmp->i386core = (I386CORE*)CPU_GET_REGPTR(5);
 		memtmp->i386_context = wow_context;
 		memtmp->setctn(wow_context,1);
 #ifdef _ARM64_
@@ -993,8 +994,8 @@ extern "C" {
 			VirtualProtect(funcofmemaccess, sizeof(memaccess), 0x20, &tmp);
 			FlushInstructionCache(GetCurrentProcess(), funcofmemaccess, sizeof(memaccess));
 			if (EMU_ID != -1) { emusemaphore[EMU_ID].funcofmemaccess = funcofmemaccess; }
+			CPU_SET_MACTLFC((UINT32(*)(int, int, int))funcofmemaccess);
 		}
-		CPU_SET_MACTLFC((UINT32(*)(int,int,int))funcofmemaccess);
 		memtmp->i386finish = false;
 		while (memtmp->i386finish == false) { CPU_EXECUTE_CC(0x7fffffff); }
 		//memtmp->setntc(wow_context);
