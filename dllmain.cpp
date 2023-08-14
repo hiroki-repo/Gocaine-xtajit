@@ -994,17 +994,19 @@ extern "C" {
 #endif
 		DWORD tmp;
 		char* funcofmemaccess = 0;
-		if (EMU_ID != -1) { funcofmemaccess = emusemaphore[EMU_ID].funcofmemaccess; }
-		if (funcofmemaccess == 0) {
-			funcofmemaccess = (char*)VirtualAlloc(0, sizeof(memaccess), 0x3000, 0x40);
-			if (funcofmemaccess != 0) {
-				memcpy(funcofmemaccess, memaccess, sizeof(memaccess));
+		if ((EMU_ID_OLD != EMU_ID) || (EMU_ID == -1)) {
+			if (EMU_ID != -1) { funcofmemaccess = emusemaphore[EMU_ID].funcofmemaccess; }
+			if (funcofmemaccess == 0) {
+				funcofmemaccess = (char*)VirtualAlloc(0, sizeof(memaccess), 0x3000, 0x40);
+				if (funcofmemaccess != 0) {
+					memcpy(funcofmemaccess, memaccess, sizeof(memaccess));
+				}
+				else { return; }
+				VirtualProtect(funcofmemaccess, sizeof(memaccess), 0x20, &tmp);
+				FlushInstructionCache(GetCurrentProcess(), funcofmemaccess, sizeof(memaccess));
+				if (EMU_ID != -1) { emusemaphore[EMU_ID].funcofmemaccess = funcofmemaccess; }
+				CPU_SET_MACTLFC((UINT32(*)(int, int, int))funcofmemaccess);
 			}
-			else { return; }
-			VirtualProtect(funcofmemaccess, sizeof(memaccess), 0x20, &tmp);
-			FlushInstructionCache(GetCurrentProcess(), funcofmemaccess, sizeof(memaccess));
-			if (EMU_ID != -1) { emusemaphore[EMU_ID].funcofmemaccess = funcofmemaccess; }
-			CPU_SET_MACTLFC((UINT32(*)(int, int, int))funcofmemaccess);
 		}
 		memtmp->i386finish = false;
 		while (memtmp->i386finish == false) { CPU_EXECUTE_CC(0x7fffffff); }
