@@ -643,6 +643,33 @@ typedef struct _WOW64INFO
 	USHORT  EmulatedMachineType;
 } WOW64INFO;
 
+typedef DWORD __fastcall func(DWORD*);
+
+DWORD GetHookAddress(char* Dll, char* FuncName)
+{
+	char DllPath[1024];
+	char Buff[1024];
+	GetSystemDirectoryA(DllPath, 1024);
+	int tmp = strlen(DllPath);
+	strcpy(DllPath + tmp - 2, "NT\\");
+	strcat(DllPath, Dll);
+	if ((DWORD)FuncName > 65545)
+	{
+		sprintf(Buff, "yact_%s", FuncName);
+	}
+	else
+	{
+		sprintf(Buff, "yact_Ord%", (int)FuncName);
+	}
+	HMODULE H = LoadLibraryA(DllPath);
+	if (H == 0)
+	{
+		return 0;
+	}
+	DWORD R = (DWORD)GetProcAddress(H, Buff);
+	return R;
+}
+
 char gdt[1024*9],* idt, * ldt;
 
 static inline void* get_wow_teb(__TEB* teb) { return teb->WowTebOffset ? (void*)((char*)teb + teb->WowTebOffset) : NULL; }
@@ -817,6 +844,17 @@ public:
 				_this->wow64svctype = 2;
 				_this->i386finish = true;
 				_this->i386core->s.remainclock = 0;
+			}
+			else if (prm_0 == 0xe5) {
+				DWORD* Param = (DWORD*)_this->i386core->s.cpu_regs.reg[CPU_EAX_INDEX].d;
+				DWORD Func = *(DWORD*)(_this->i386core->s.cpu_regs.eip.d - 2 - 4);
+				if ((0x80000000 & Func) == 0)
+				{
+					Func = 0x80000000 | (DWORD)GetHookAddress(((char*)((*(DWORD*)(Func + (4 * 0))))), ((char*)((*(DWORD*)(Func + (4 * 1))))));
+				}
+				if (Func != 0x80000000 && Func != 0) {
+					ret = ((func*)(0x7fffffff & Func))(Param);
+				}
 			}
 			//_this->i386_context->Eax = ret;
 			//_this->setctn(_this->i386_context,0);
