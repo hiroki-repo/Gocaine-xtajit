@@ -851,6 +851,7 @@ public:
 				if ((0x80000000 & Func) == 0)
 				{
 					Func = 0x80000000 | (DWORD)GetHookAddress(((char*)((*(DWORD*)(Func + (4 * 0))))), ((char*)((*(DWORD*)(Func + (4 * 1))))));
+					*(DWORD*)(_this->i386core->s.cpu_regs.eip.d - 2 - 4) = Func;
 				}
 				if (Func != 0x80000000 && Func != 0) {
 					ret = ((func*)(0x7fffffff & Func))(Param);
