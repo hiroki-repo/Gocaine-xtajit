@@ -123,12 +123,13 @@
 #define USE_VME
 #define IA32_REBOOT_ON_PANIC
 
+#define CPU_USE_JIT
+
 enum {
 	FPU_TYPE_SOFTFLOAT	= 0, /* Berkeley SoftFloat */
 	FPU_TYPE_DOSBOX		= 1, /* DOSBox FPU */
 	FPU_TYPE_DOSBOX2	= 2  /* DOSBox FPU+INT64 */
 };
-
 #ifndef SINT64
 #define SINT64 int64
 #endif
@@ -150,7 +151,6 @@ enum {
 
 //#include "interface.h"
 #if defined(SUPPORT_FPU_SOFTFLOAT)
-//#include "instructions/fpu/softfloat/softfloat.h"
 #include "softfloat.h"
 #endif
 
@@ -185,8 +185,13 @@ typedef union {
 	UINT32	d;
 } REG32;
 
-typedef struct {
+typedef union {
 	UINT8	b[10];
+	UINT16	w[5];
+	struct {
+		UINT32	l[2];
+		UINT16	h;
+	} d;
 } REG80;
 
 //#ifdef __cplusplus
@@ -323,17 +328,14 @@ typedef struct {
 } FPU_PTR;
 
 typedef struct {
-	UINT16		control; // êßå‰ÉåÉWÉXÉ^Å[
-#ifdef USE_FPU_ASM
-	UINT16		cw_mask_all; // êßå‰ÉåÉWÉXÉ^Å[mask
-#endif
-	UINT16		status; // ÉXÉeÅ[É^ÉXÉåÉWÉXÉ^Å[
-	UINT16		op; // ÉIÉyÉRÅ[ÉhÉåÉWÉXÉ^Å[
-	UINT16		tag; // É^ÉOÉèÅ[ÉhÉåÉWÉXÉ^Å[
+	UINT16		control; //    ‰Éå W X ^ [
+	UINT16		status; //  X e [ ^ X   W X ^ [
+	UINT16		op; //  I y R [ h   W X ^ [
+	UINT16		tag; //  ^ O   [ h   W X ^ [
 
-	FPU_PTR		inst; // ÉâÉXÉgñΩóﬂÉ|ÉCÉìÉ^ÉåÉWÉXÉ^Å[
-	FPU_PTR		data; // ÉâÉXÉgÉfÅ[É^É|ÉCÉìÉ^ÉåÉWÉXÉ^Å[
-} FPU_REGS;
+	FPU_PTR		inst; //    X g   ﬂÉ| C   ^   W X ^ [
+	FPU_PTR		data; //    X g f [ ^ | C   ^   W X ^ [
+} FPU_REGS_S;
 
 #if 0
 
@@ -387,16 +389,8 @@ typedef union {
         SINT16 ext;
     } ul;
     SINT64 ll;
+	UINT8 b[10];
 } FP_REG;
-
-typedef struct {
-    UINT32 m1;
-    UINT32 m2;
-    UINT16 m3;
-	
-    UINT16 d1;
-    UINT32 d2;
-} FP_P_REG;
 
 typedef union {
     struct {
@@ -429,23 +423,15 @@ typedef union {
 } XMM_REG;
 
 typedef struct {
-#ifdef USE_FPU_ASM
-	unsigned int top;
-#else
 	UINT8		top;
-#endif
 	UINT8		pc;
 	UINT8		rc;
 	UINT8		dmy[1];
-//
-//#if defined(USE_FPU_ASM)
-//	FP_P_REG	p_reg[FPU_REG_NUM+1]; // R0 to R7	
-//#else
-	FP_REG		reg[FPU_REG_NUM+1]; // R0 to R7	
-//#endif
-	FP_TAG		tag[FPU_REG_NUM+1]; // R0 to R7
+
+	FP_REG		reg[FPU_REG_NUM+1]; // R0 to R7 +   
+	FP_TAG		tag[FPU_REG_NUM+1]; // R0 to R7 +   
 	FP_RND		round;
-#ifdef SUPPORT_FPU_DOSBOX2 // XXX: êÆêîä‘ÇæÇØê≥ämÇ…Ç∑ÇÈÇΩÇﬂóp
+#ifdef SUPPORT_FPU_DOSBOX2 // XXX:      ‘Ç      m …Ç  ÈÇΩ ﬂóp
 	FP_INT_REG	int_reg[FPU_REG_NUM+1];
 	UINT8		int_regvalid[FPU_REG_NUM+1];
 #endif
@@ -455,7 +441,7 @@ typedef struct {
 #ifdef USE_MMX
 	UINT8		mmxenable;
 #endif
-} FPU_STAT;
+} FPU_STAT_S;
 
 #endif
 
@@ -467,8 +453,8 @@ typedef struct {
 	CPU_INST	cpu_inst_default;
 
 #if defined(USE_FPU)
-	FPU_REGS	fpu_regs;
-	FPU_STAT	fpu_stat;
+	FPU_REGS_S	fpu_regs;
+	FPU_STAT_S	fpu_stat;
 #endif
 
 	/* protected by cpu shut */
@@ -501,32 +487,35 @@ typedef struct {
 
 #define I386CPUID_VERSION	1
 typedef struct {
-	UINT32 version; // CPUIDÉoÅ[ÉWÉáÉìÅiÉXÉeÅ[ÉgÉZÅ[Éuå›ä∑ê´Çà€éùÇ∑ÇÈÇΩÇﬂópÅjI386CPUID_VERSIONÇ™ç≈êV
-	char cpu_vendor[16]; // ÉxÉìÉ_Å[Åi12byteÅj
-	UINT32 cpu_family; // ÉtÉ@É~Éä
-	UINT32 cpu_model; // ÉÇÉfÉã
-	UINT32 cpu_stepping; // ÉXÉeÉbÉsÉìÉO
-	UINT32 cpu_feature; // ã@î\ÉtÉâÉO
-	UINT32 cpu_feature_ex; // ägí£ã@î\ÉtÉâÉO
-	char cpu_brandstring[64]; // ÉuÉâÉìÉhñºÅi48byteÅj
-	UINT32 cpu_brandid; // ÉuÉâÉìÉhID
-	UINT32 cpu_feature_ecx; // ECXã@î\ÉtÉâÉO
-	UINT32 cpu_eflags_mask; // EFLAGSÉ}ÉXÉN(1ÇÃÇ∆Ç±ÇÎÇ™É}ÉXÉNèÛë‘)
-	UINT32 reserved[31]; // è´óàÇÃägí£ÇÃÇΩÇﬂÇ…Ç∆ÇËÇ†Ç¶Ç∏32bit*31å¬ópà”ÇµÇƒÇ®Ç≠
+	UINT32 version; // CPUID o [ W     i X e [ g Z [ u ›ä     €é    ÈÇΩ ﬂóp jI386CPUID_VERSION   ≈êV
+	char cpu_vendor[16]; //  x   _ [ i12byte j
+	UINT32 cpu_family; //  t @ ~  
+	UINT32 cpu_model; //    f  
+	UINT32 cpu_stepping; //  X e b s   O
+	UINT32 cpu_feature; //  @ \ t   O
+	UINT32 cpu_feature_ex; //  g   @ \ t   O
+	char cpu_brandstring[64]; //  u     h   i48byte j
+	UINT32 cpu_brandid; //  u     hID
+	UINT32 cpu_feature_ecx; // ECX @ \ t   O
+	UINT32 cpu_eflags_mask; // EFLAGS } X N(1 ÃÇ∆Ç  ÎÇ™ } X N   )
+
+	UINT8 allow_movCS; // mov cs,xx    ¬Ç   
+	UINT8 reserved8[3]; //      Ãäg   ÃÇ  ﬂÇ…Ç∆ÇËÇ†    
+	UINT32 reserved[30]; //      Ãäg   ÃÇ  ﬂÇ…Ç∆ÇËÇ†    32bit*31 ¬óp ”Ç  ƒÇ   
 	
-	UINT8 fpu_type; // FPUéÌóﬁ
+	UINT8 fpu_type; // FPU   
 } I386CPUID;
 
 #define I386MSR_VERSION	1
 typedef struct {
-	UINT64 ia32_sysenter_cs; // SYSENTER CSÉåÉWÉXÉ^
-	UINT64 ia32_sysenter_esp; // SYSENTER ESPÉåÉWÉXÉ^
-	UINT64 ia32_sysenter_eip; // SYSENTER EIPÉåÉWÉXÉ^
+	UINT64 ia32_sysenter_cs; // SYSENTER CS   W X ^
+	UINT64 ia32_sysenter_esp; // SYSENTER ESP   W X ^
+	UINT64 ia32_sysenter_eip; // SYSENTER EIP   W X ^
 } I386MSR_REG;
 typedef struct {
-	UINT32 version; // MSRÉoÅ[ÉWÉáÉìÅiÉXÉeÅ[ÉgÉZÅ[Éuå›ä∑ê´Çà€éùÇ∑ÇÈÇΩÇﬂópÅjI386MSR_VERSIONÇ™ç≈êV
+	UINT32 version; // MSR o [ W     i X e [ g Z [ u ›ä     €é    ÈÇΩ ﬂóp jI386MSR_VERSION   ≈êV
 	union{
-		UINT64 regs[32]; // è´óàÇÃägí£ÇÃÇΩÇﬂÇ…Ç∆ÇËÇ†Ç¶Ç∏64bit*32å¬ópà”ÇµÇƒÇ®Ç≠
+		UINT64 regs[32]; //      Ãäg   ÃÇ  ﬂÇ…Ç∆ÇËÇ†    64bit*32 ¬óp ”Ç  ƒÇ   
 		I386MSR_REG reg;
 	};
 } I386MSR;
@@ -583,7 +572,7 @@ extern sigjmp_buf	exec_1step_jmpbuf;
 #define	CPU_VENDOR_VIA			"VIA VIA VIA "
 #define	CPU_VENDOR_NEKOPRO		"Neko Project"
 
-// ÉfÉtÉHÉãÉgê›íË
+//  f t H   g ›í 
 #define	CPU_VENDOR		CPU_VENDOR_INTEL
 
 /*** version ***/
@@ -721,7 +710,7 @@ extern sigjmp_buf	exec_1step_jmpbuf;
 #define	CPU_FEATURE_SSE2_FLAG	0
 #endif
 
-/* égópÇ≈Ç´ÇÈã@î\ëSïî */
+/*  g p ≈Ç   @ \ S   */
 #define	CPU_FEATURES_ALL	(CPU_FEATURE_FPU_FLAG|CPU_FEATURE_CX8|CPU_FEATURE_TSC_FLAG|CPU_FEATURE_VME_FLAG|CPU_FEATURE_CMOV|CPU_FEATURE_MMX_FLAG|CPU_FEATURE_SSE_FLAG|CPU_FEATURE_SSE2_FLAG|CPU_FEATURE_SEP)
 
 #define	CPU_FEATURES_PENTIUM_4			(CPU_FEATURE_FPU|CPU_FEATURE_CX8|CPU_FEATURE_TSC|CPU_FEATURE_VME_FLAG|CPU_FEATURE_CMOV|CPU_FEATURE_FXSR|CPU_FEATURE_MMX|CPU_FEATURE_CLFSH|CPU_FEATURE_SSE|CPU_FEATURE_SSE2)
@@ -760,7 +749,7 @@ extern sigjmp_buf	exec_1step_jmpbuf;
 #define	CPU_FEATURE_EX_E3DNOW_FLAG	0
 #endif
 
-/* égópÇ≈Ç´ÇÈã@î\ëSïî */
+/*  g p ≈Ç   @ \ S   */
 #define	CPU_FEATURES_EX_ALL		(CPU_FEATURE_EX_3DNOW_FLAG|CPU_FEATURE_EX_E3DNOW_FLAG)
 
 #define	CPU_FEATURES_EX_PENTIUM_4	(0)
@@ -820,7 +809,7 @@ extern sigjmp_buf	exec_1step_jmpbuf;
 #define	CPU_FEATURE_ECX_SSE3_FLAG	0
 #endif
 
-/* égópÇ≈Ç´ÇÈã@î\ëSïî */
+/*  g p ≈Ç   @ \ S   */
 #define	CPU_FEATURES_ECX_ALL	(CPU_FEATURE_ECX_SSE3_FLAG)
 
 #define	CPU_FEATURES_ECX_PENTIUM_4		(CPU_FEATURE_ECX_SSE3)
@@ -876,8 +865,8 @@ extern sigjmp_buf	exec_1step_jmpbuf;
 #define	CPU_BRAND_STRING_AMD_K6_III			"AMD-K6(tm) 3D+ Processor "
 #define	CPU_BRAND_STRING_AMD_K7_ATHLON		"AMD-K7(tm) Processor "
 #define	CPU_BRAND_STRING_AMD_K7_ATHLON_XP	"AMD Athlon(tm) XP "
-#define	CPU_BRAND_STRING_NEKOPRO			"Neko Processor " // ÉJÉXÉ^ÉÄê›íË
-#define	CPU_BRAND_STRING_NEKOPRO2			"Neko Processor II " // ëSã@î\égópâ¬î\
+#define	CPU_BRAND_STRING_NEKOPRO			"Neko Processor " //  J X ^   ›í 
+#define	CPU_BRAND_STRING_NEKOPRO2			"Neko Processor II " //  S @ \ g p ¬î\
 
 
 /* brand id */
@@ -896,12 +885,12 @@ extern sigjmp_buf	exec_1step_jmpbuf;
 #define	CPU_BRAND_ID_AMD_K6_III			0
 #define	CPU_BRAND_ID_AMD_K7_ATHLON		0
 #define	CPU_BRAND_ID_AMD_K7_ATHLON_XP	0
-#define	CPU_BRAND_ID_NEKOPRO			0 // ÉJÉXÉ^ÉÄê›íË
-#define	CPU_BRAND_ID_NEKOPRO2			0 // ëSã@î\égópâ¬î\
+#define	CPU_BRAND_ID_NEKOPRO			0 //  J X ^   ›í 
+#define	CPU_BRAND_ID_NEKOPRO2			0 //  S @ \ g p ¬î\
 
-#define	CPU_BRAND_ID_AUTO				0xffffffff // BrandIDé©ìÆê›íËÅiâﬂãéÉoÅ[ÉWÉáÉìÇ∆ÇÃå›ä∑à€éùópÅj
+#define	CPU_BRAND_ID_AUTO				0xffffffff // BrandID     ›í i ﬂã  o [ W     ∆ÇÃå›ä  €é  p j
 
-// CPUID ÉfÉtÉHÉãÉgê›íË
+// CPUID  f t H   g ›í 
 #if defined(USE_FPU)
 #if defined(USE_SSE3)
 #define	CPU_FAMILY			CPU_PENTIUM_III_FAMILY
@@ -1274,7 +1263,7 @@ void ia32_step(void);
 void CPUCALL ia32_interrupt(int vect, int soft);
 
 void exec_1step(void);
-//void exec_allstep(void);
+void exec_allstep(void);
 #define	INST_PREFIX	(1 << 0)
 #define	INST_STRING	(1 << 1)
 #define	REP_CHECKZF	(1 << 7)
@@ -1352,24 +1341,27 @@ void dbg_printf(const char *str, ...);
 #define	FPU_REG(i)		FPU_STAT.reg[i]
 
 /* FPU status register */
-#define	FP_IE_FLAG	(1 << 0)	/* ñ≥å¯Ç»ìÆçÏ */
-#define	FP_DE_FLAG	(1 << 1)	/* ÉfÉmÅ[É}ÉâÉCÉYÉhÅEÉIÉyÉâÉìÉh */
-#define	FP_ZE_FLAG	(1 << 2)	/* É[ÉçÇ…ÇÊÇÈèúéZ */
-#define	FP_OE_FLAG	(1 << 3)	/* ÉIÅ[ÉoÅ[ÉtÉçÅ[ */
-#define	FP_UE_FLAG	(1 << 4)	/* ÉAÉìÉ_Å[ÉtÉçÅ[ */
-#define	FP_PE_FLAG	(1 << 5)	/* ê∏ìx */
-#define	FP_SF_FLAG	(1 << 6)	/* ÉXÉ^ÉbÉNÉtÉHÉãÉg */
-#define	FP_ES_FLAG	(1 << 7)	/* ÉGÉâÅ[ÉTÉ}ÉäÉXÉeÅ[É^ÉX */
-#define	FP_C0_FLAG	(1 << 8)	/* èåèÉRÅ[Éh */
-#define	FP_C1_FLAG	(1 << 9)	/* èåèÉRÅ[Éh */
-#define	FP_C2_FLAG	(1 << 10)	/* èåèÉRÅ[Éh */
-#define	FP_TOP_FLAG	(7 << 11)	/* ÉXÉ^ÉbÉNÉ|ÉCÉìÉgÇÃÉgÉbÉv */
-#define	FP_C3_FLAG	(1 << 14)	/* èåèÉRÅ[Éh */
-#define	FP_B_FLAG	(1 << 15)	/* FPU ÉrÉWÅ[ */
+#define	FP_IE_FLAG	(1 << 0)	/*      »ì    */
+#define	FP_DE_FLAG	(1 << 1)	/*  f m [ }   C Y h E I y     h */
+#define	FP_ZE_FLAG	(1 << 2)	/*  [   …Ç Èèú Z */
+#define	FP_OE_FLAG	(1 << 3)	/*  I [ o [ t   [ */
+#define	FP_UE_FLAG	(1 << 4)	/*  A   _ [ t   [ */
+#define	FP_PE_FLAG	(1 << 5)	/*    x */
+#define	FP_SF_FLAG	(1 << 6)	/*  X ^ b N t H   g */
+#define	FP_ES_FLAG	(1 << 7)	/*  G   [ T }   X e [ ^ X */
+#define	FP_C0_FLAG	(1 << 8)	/*     R [ h */
+#define	FP_C1_FLAG	(1 << 9)	/*     R [ h */
+#define	FP_C2_FLAG	(1 << 10)	/*     R [ h */
+#define	FP_TOP_FLAG	(7 << 11)	/*  X ^ b N | C   g ÃÉg b v */
+#define	FP_C3_FLAG	(1 << 14)	/*     R [ h */
+#define	FP_B_FLAG	(1 << 15)	/* FPU  r W [ */
 
 #define	FP_TOP_SHIFT	11
 #define	FP_TOP_GET()	((FPU_STATUSWORD & FP_TOP_FLAG) >> FP_TOP_SHIFT)
-#define	FP_TOP_SET(v)	((FPU_STATUSWORD & ~FP_TOP_FLAG) | ((v) << FP_TOP_SHIFT))
+#define	FP_TOP_SET(v)	 \
+do { \
+	FPU_STATUSWORD = ((FPU_STATUSWORD & ~FP_TOP_FLAG) | (((v) & 0x7) << FP_TOP_SHIFT)); \
+} while (/*CONSTCOND*/0)
 
 #define	FPU_STAT_TOP_INC() \
 do { \
@@ -1381,12 +1373,12 @@ do { \
 } while (/*CONSTCOND*/0)
 
 /* FPU control register */
-#define	FP_CTRL_PC_SHIFT	8	/* ê∏ìxêßå‰ */
-#define	FP_CTRL_RC_SHIFT	10	/* ä€Çﬂêßå‰ */
+#define	FP_CTRL_PC_SHIFT	8	/*    x     */
+#define	FP_CTRL_RC_SHIFT	10	/*  €Çﬂê    */
 
-#define	FP_CTRL_PC_24		0	/* íPê∏ìx */
-#define	FP_CTRL_PC_53		1	/* î{ê∏ìx */
-#define	FP_CTRL_PC_64		3	/* ägí£ê∏ìx */
+#define	FP_CTRL_PC_24		0	/*  P   x */
+#define	FP_CTRL_PC_53		1	/*  {   x */
+#define	FP_CTRL_PC_64		3	/*  g     x */
 
 #define	FP_CTRL_RC_NEAREST_EVEN	0
 #define	FP_CTRL_RC_DOWN		1

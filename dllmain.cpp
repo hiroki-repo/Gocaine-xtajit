@@ -871,11 +871,11 @@ extern "C" {
 #endif
 
 	__declspec(dllexport) void* WINAPI BTCpuGetBopCode(void) { return (UINT32*)&bopcode; }
-	__declspec(dllexport) NTSTATUS WINAPI BTCpuGetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtQueryInformationThread(thread,ThreadWow64Context,ctx,sizeof(*ctx),NULL); }
+	__declspec(dllexport) NTSTATUS WINAPI BTCpuGetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtQueryInformationThread_alternative(thread,ThreadWow64Context,ctx,sizeof(*ctx),NULL); }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuProcessInit(void) { if ((ULONG_PTR)BTCpuProcessInit >> 32) { return STATUS_INVALID_ADDRESS; } return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuThreadInit(void) { idt = (char*)RtlAllocateHeap(GetProcessHeap(),HEAP_ZERO_MEMORY,255*8); ldt = (char*)RtlAllocateHeap(GetProcessHeap(), HEAP_ZERO_MEMORY, 256 * 8); return STATUS_SUCCESS; }
 	__declspec(dllexport) NTSTATUS WINAPI BTCpuResetToConsistentState(EXCEPTION_POINTERS* ptrs) { return STATUS_SUCCESS; }
-	__declspec(dllexport) NTSTATUS WINAPI BTCpuSetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtSetInformationThread(thread, ThreadWow64Context, ctx, sizeof(*ctx)); }
+	__declspec(dllexport) NTSTATUS WINAPI BTCpuSetContext(HANDLE thread, HANDLE process, void* unknown, I386_CONTEXT* ctx) { return NtSetInformationThread_alternative(thread, ThreadWow64Context, ctx, sizeof(*ctx)); }
 	__declspec(dllexport) void WINAPI BTCpuSimulate(void) {
 		t_CPU_GET_REGPTR* CPU_GET_REGPTR = 0;
 		t_CPU_EXECUTE_CC* CPU_EXECUTE_CC = 0;
